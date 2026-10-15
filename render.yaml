@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: sphera-backend
+    runtime: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true

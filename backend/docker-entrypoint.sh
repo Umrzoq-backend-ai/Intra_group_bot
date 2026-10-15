@@ -3,6 +3,7 @@
 set -e
 
 PORT="${PORT:-8001}"
+export INTERNAL_API_URL="${INTERNAL_API_URL:-http://127.0.0.1:${PORT}}"
 
 # Icecast2 — jonli efir (USE_ICECAST=true bo'lsa)
 if [ "${USE_ICECAST:-false}" = "true" ]; then
