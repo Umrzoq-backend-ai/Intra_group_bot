@@ -1380,7 +1380,7 @@ def main() -> None:
     ))
 
     log.info("INTRA GROUP bot ishga tushdi. URL=%s", MINI_APP_URL)
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 
 if __name__ == "__main__":
