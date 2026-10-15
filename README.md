@@ -1,6 +1,10 @@
 # 🎙 INTRA GROUP — AI Radio Platform
 
-> Telegram Mini App formatidagi interaktiv AI radio platformasi. Foydalanuvchilar jonli efir tinglaydi, real vaqtda chat qiladi, ovozli xabar yuboradi va mikrofon bilan efirga chiqadi.
+> Telegram Mini App va mustaqil Veb-Platforma formatidagi interaktiv AI radio platformasi. Foydalanuvchilar jonli efir tinglaydi, real vaqtda chat qiladi, ovozli xabar yuboradi va mikrofon bilan jonli efirga chiqadi.
+
+[![Live Demo](https://img.shields.io/badge/Live_Platform-Vercel-27d9f7?style=for-the-badge&logo=vercel)](https://frontend-tau-seven-19.vercel.app)
+[![Backend Status](https://img.shields.io/badge/Backend_API-Render-46E3B7?style=for-the-badge&logo=render)](https://sphera-backend-edgc.onrender.com)
+
 
 ---
 
