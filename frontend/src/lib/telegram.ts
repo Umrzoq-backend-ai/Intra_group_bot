@@ -109,7 +109,7 @@ export function hapticTick() {
   } catch (e) { /* no-op */ }
 }
 
-// Get Telegram user
+// Get Telegram user (yoki mustaqil veb-platforma foydalanuvchisi)
 export function getTgUser() {
   const tg = getTelegram();
   
@@ -117,7 +117,42 @@ export function getTgUser() {
     return tg.initDataUnsafe.user;
   }
   
-  // Browser test fallback
+  // Veb-sayt platformasida ochilganda
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const paramId = params.get('tg_id') || params.get('id');
+    const paramUser = params.get('username');
+    const paramName = params.get('name') || params.get('first_name');
+    if (paramId && /^\d+$/.test(paramId)) {
+      const u = {
+        id: Number(paramId),
+        username: paramUser || null,
+        first_name: paramName || `User_${paramId.slice(-4)}`,
+      };
+      localStorage.setItem('intra_web_user', JSON.stringify(u));
+      return u;
+    }
+
+    // Brauzer xotirasidagi mavjud veb profil
+    const saved = localStorage.getItem('intra_web_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.id) return parsed;
+      } catch (e) {}
+    }
+
+    // Yangi veb-mehmon uchun unikal profil generatsiya qilamiz
+    const randomId = 800000000 + Math.floor(Math.random() * 90000000);
+    const newWebUser = {
+      id: randomId,
+      username: `web_${String(randomId).slice(-5)}`,
+      first_name: `Web Guest ${String(randomId).slice(-4)}`,
+    };
+    localStorage.setItem('intra_web_user', JSON.stringify(newWebUser));
+    return newWebUser;
+  }
+
   return { id: 999999, username: 'test_user', first_name: 'Test' };
 }
 
