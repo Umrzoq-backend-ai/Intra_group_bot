@@ -166,7 +166,7 @@ async def aggregate_opinions(topic_id: int) -> dict | None:
         SELECT o.id, o.text, o.kind, u.username, u.display_name
         FROM opinions o
         LEFT JOIN users u ON u.id = o.user_id
-        WHERE o.topic_id = $1 AND o.kind = 'text' AND o.status = 'pending'
+        WHERE o.topic_id = $1 AND o.status = 'pending'
               AND o.text IS NOT NULL AND o.text <> ''
         ORDER BY o.created_at ASC
         LIMIT $2

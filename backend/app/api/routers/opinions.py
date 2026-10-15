@@ -4,6 +4,7 @@ Boss talabi: Odamlar fikr yuboradi (matn/ovoz) → point yechiladi → saqlaydi.
 Telegram resursi ishlatiladi — fayl serverga yuklanmaydi, faqat file_id saqlanadi.
 """
 
+import asyncio
 import logging
 import os
 import uuid
@@ -22,6 +23,19 @@ log = logging.getLogger("opinions")
 router = APIRouter(prefix="/opinions", tags=["opinions"])
 
 _ALLOWED_AUDIO = {".webm", ".ogg", ".mp3", ".m4a", ".wav", ".oga"}
+
+
+async def _transcribe_opinion_voice(opinion_id: int, fpath: str):
+    """Ovozli fikrni fonda matnga o'girib (STT), bazadagi text maydoniga yozadi."""
+    try:
+        from app.services import whisper_stt
+
+        text = await whisper_stt.transcribe(fpath)
+        if text and text.strip():
+            await db.execute("UPDATE opinions SET text = $1 WHERE id = $2", text.strip(), opinion_id)
+            log.info("[opinions] Voice #%d transcribed: %s", opinion_id, text[:60])
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[opinions] STT failed for voice #%d: %s", opinion_id, exc)
 
 
 class OpinionSaveRequest(BaseModel):
@@ -164,5 +178,8 @@ async def save_voice_opinion(
         fname,
         voice_cost,
     )
+    # Fondagi transkripsiya — matn olingach agregatsiyaga kiritiladi
+    asyncio.create_task(_transcribe_opinion_voice(row["id"], fpath))
+
     log.info("[opinions] voice #%s user=%s topic=%s", row["id"], user["id"], topic_id)
     return {"ok": True, "opinion_id": row["id"], "points": str(spent["points"])}

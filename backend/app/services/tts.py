@@ -66,8 +66,21 @@ async def _edge_synth(text: str, out_path: str, lang: str) -> str:
     return out_path
 
 
+async def _gtts_synth(text: str, out_path: str, lang: str) -> str:
+    """gTTS orqali kafolatlangan bepul sintez (edge-tts va ElevenLabs ishlamasa)."""
+    from gtts import gTTS
+
+    def _run():
+        gtts_lang = lang if lang in ("ru", "en") else "en"
+        tts_obj = gTTS(text=text, lang=gtts_lang)
+        tts_obj.save(out_path)
+        return out_path
+
+    return await asyncio.to_thread(_run)
+
+
 async def synthesize(text: str, out_path: str, lang: str = "ru") -> str:
-    """Синтезирует речь в mp3. ElevenLabs primary, edge-tts fallback.
+    """Синтезирует речь в mp3. ElevenLabs primary, edge-tts fallback, gTTS ultimate fallback.
 
     Args:
         text: текст для озвучки
@@ -82,7 +95,11 @@ async def synthesize(text: str, out_path: str, lang: str = "ru") -> str:
             if not TTS_FALLBACK_EDGE:
                 raise
     # Фолбэк / основной edge-tts
-    return await _edge_synth(text, out_path, lang)
+    try:
+        return await _edge_synth(text, out_path, lang)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("edge-tts failed (%s): %s, falling back to gTTS", lang, exc)
+        return await _gtts_synth(text, out_path, lang)
 
 
 async def synthesize_multilang(scripts: dict[str, str], out_dir: str) -> dict[str, str]:
