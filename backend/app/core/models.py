@@ -198,11 +198,23 @@ class ChatMessageRequest(BaseModel):
 
 class ChatMessageOut(BaseModel):
     id: int
+    telegram_id: int | None = None
     username: str | None = None
     display_name: str | None = None
     message: str
     message_type: str = "text"
     voice_url: str | None = None
+    created_at: datetime
+
+
+class LiveMicRequestOut(BaseModel):
+    id: int
+    user_id: int
+    telegram_id: int | None = None
+    username: str | None = None
+    display_name: str | None = None
+    status: str = "pending"
+    city: str = "global"
     created_at: datetime
 
 

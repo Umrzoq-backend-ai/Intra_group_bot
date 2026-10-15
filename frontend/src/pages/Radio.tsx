@@ -358,10 +358,17 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
         className="w-full max-w-[440px] sm:max-w-[460px] h-full sm:h-[94vh] sm:max-h-[920px] sm:my-auto sm:rounded-[36px] sm:border sm:border-[rgba(39,217,247,0.22)] sm:shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(39,217,247,0.15)] bg-[#060a14]/90 backdrop-blur-2xl flex flex-col relative z-10 overflow-hidden"
         style={{ height: 'var(--app-vh)' }}
       >
+        {/* Fixed TopBar on non-chat tabs with user Telegram ID and points */}
+        {!isChat && (
+          <div className="px-4 pt-2.5 pb-1 z-20 shrink-0 border-b border-[rgba(39,217,247,0.1)]">
+            <TopBar points={user?.points || 0} telegramId={user?.telegram_id} />
+          </div>
+        )}
+
         {/* Asosiy scroll container — mouse wheel + touch ikkalasi ishlaydi */}
         <div
           ref={scrollRef}
-          className="relative z-10 flex-1"
+          className="relative z-10 flex-1 min-h-0"
           style={{
             overflowY: isChat ? 'hidden' : 'auto',
             overflowX: 'hidden',
@@ -371,12 +378,10 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
           }}
         >
           <div
-            className={`w-full mx-auto flex flex-col gap-4 ${
-              isChat ? 'h-full pb-[86px]' : 'px-4 pt-3 pb-[170px]'
+            className={`w-full mx-auto flex flex-col gap-3 ${
+              isChat ? 'h-full pb-[86px]' : 'px-4 pt-1 pb-[120px]'
             }`}
           >
-            {/* Chat ekranida TopBar (logo + points) yashiriladi */}
-            {!isChat && <TopBar points={user?.points || 0} />}
             {isChat ? (
               <div className="flex-1 min-h-0 flex flex-col">{renderScreen(currentScreen)}</div>
             ) : (

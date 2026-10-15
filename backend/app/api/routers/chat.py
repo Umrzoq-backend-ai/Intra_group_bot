@@ -101,7 +101,7 @@ async def get_chat_history(limit: int = 50):
     """Oxirgi chat xabarlari (umumiy chat — guruh xabarlari bu yerga chiqmaydi)."""
     rows = await db.fetch(
         """
-        SELECT c.id, u.username, u.display_name, c.message, c.message_type,
+        SELECT c.id, u.telegram_id, u.username, u.display_name, c.message, c.message_type,
                c.audio_file_path, c.created_at
         FROM chat_messages c
         LEFT JOIN users u ON u.id = c.user_id
@@ -121,6 +121,7 @@ async def get_chat_history(limit: int = 50):
         out.append(
             ChatMessageOut(
                 id=r["id"],
+                telegram_id=r["telegram_id"],
                 username=r["username"],
                 display_name=r["display_name"],
                 message=r["message"],
@@ -166,6 +167,7 @@ async def send_message(
             "type": "chat",
             "data": {
                 "id": row["id"],
+                "telegram_id": user.get("telegram_id"),
                 "username": user["username"],
                 "display_name": _display_name(user),
                 "message": payload.message.strip(),
@@ -238,6 +240,7 @@ async def send_voice(
             "type": "chat",
             "data": {
                 "id": row["id"],
+                "telegram_id": user.get("telegram_id"),
                 "username": user["username"],
                 "display_name": _display_name(user),
                 "message": "",

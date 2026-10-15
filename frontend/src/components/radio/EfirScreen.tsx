@@ -12,7 +12,11 @@ import { useToast } from '../../hooks/useToast';
 import { useTelegramBackButton } from '../../hooks/useTelegramBackButton';
 import { Toast } from '../ui/Toast';
 import { FullScreenModal } from '../ui/FullScreenModal';
-import { getRadioStatus, getChatHistory, getMySlots, sendOpinionVoice, sendChatMessage, sendVoiceMessage, type BroadcastSlot } from '../../lib/api';
+import {
+  getRadioStatus, getChatHistory, getMySlots, sendOpinionVoice, sendChatMessage, sendVoiceMessage,
+  requestLiveMic, getLiveMicRequests, approveLiveMicRequest, rejectLiveMicRequest, getMyMicRequest,
+  type BroadcastSlot, type LiveMicRequest,
+} from '../../lib/api';
 import { DEFAULT_CITY, LS_CITY } from '../../lib/config';
 import { hapticImpact } from '../../lib/telegram';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -76,6 +80,53 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
   const canGoLive = user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'doverenniy';
   const [mySlot, setMySlot] = useState<BroadcastSlot | null>(null);
   const [, forceTick] = useState(0);
+
+  // Jonli efirda so'z olish (Live Mic request / Hand raise) holatlari
+  const [myMicStatus, setMyMicStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+  const [submittingMicRequest, setSubmittingMicRequest] = useState(false);
+  const [pendingMicRequests, setPendingMicRequests] = useState<LiveMicRequest[]>([]);
+  const [showCallersModal, setShowCallersModal] = useState(false);
+
+  useEffect(() => {
+    if (canGoLive) {
+      getLiveMicRequests(city).then(setPendingMicRequests).catch(() => {});
+    } else {
+      getMyMicRequest(city).then((res) => setMyMicStatus(res.status)).catch(() => {});
+    }
+  }, [city, canGoLive]);
+
+  const handleRequestMic = async () => {
+    setSubmittingMicRequest(true);
+    try {
+      await requestLiveMic(city);
+      setMyMicStatus('pending');
+      showToast('✋ Запрос отправлен ведущему эфира!');
+    } catch (e: any) {
+      showToast(e.message || 'Ошибка запроса', 'error');
+    } finally {
+      setSubmittingMicRequest(false);
+    }
+  };
+
+  const handleApproveCaller = async (requestId: number) => {
+    try {
+      await approveLiveMicRequest(city, requestId);
+      setPendingMicRequests((prev) => prev.filter((r) => r.id !== requestId));
+      showToast('✅ Участник допущен в эфир!');
+    } catch (e: any) {
+      showToast(e.message || 'Ошибка', 'error');
+    }
+  };
+
+  const handleRejectCaller = async (requestId: number) => {
+    try {
+      await rejectLiveMicRequest(city, requestId);
+      setPendingMicRequests((prev) => prev.filter((r) => r.id !== requestId));
+      showToast('Запрос отклонён');
+    } catch (e: any) {
+      showToast(e.message || 'Ошибка', 'error');
+    }
+  };
 
   // O'zi efirga chiqqanda — agar oldin tinglab turgan bo'lsa, pleer
   // avtomatik to'xtaydi (aks holda o'z ovozini eshitib qoladi). Efirda
@@ -217,6 +268,29 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
         break;
       case 'balance':
         onPointsUpdate(wsMessage.data.points);
+        break;
+      case 'mic_request':
+        if (canGoLive) {
+          setPendingMicRequests((prev) => {
+            if (prev.some((r) => r.id === wsMessage.data.id)) return prev;
+            return [...prev, wsMessage.data];
+          });
+          showToast(`✋ ${wsMessage.data.display_name} просит микрофон!`);
+        }
+        break;
+      case 'mic_approved':
+        if (user && (wsMessage.data.user_id === user.id || wsMessage.data.telegram_id === user.telegram_id)) {
+          setMyMicStatus('approved');
+          showToast('🎉 Вам дали слово в эфире! Включите микрофон');
+        }
+        setPendingMicRequests((prev) => prev.filter((r) => r.id !== wsMessage.data.request_id));
+        break;
+      case 'mic_rejected':
+        if (user && wsMessage.data.user_id === user.id) {
+          setMyMicStatus('rejected');
+          showToast('Запрос в эфир отклонён', 'error');
+        }
+        setPendingMicRequests((prev) => prev.filter((r) => r.id !== wsMessage.data.request_id));
         break;
     }
   }
@@ -446,14 +520,14 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
       )}
 
       {/* ── УРОВЕНЬ / ПОТОК REAL TIME ── */}
-      <div className="text-center pt-2 pb-3 flex flex-col items-center gap-1">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.2)]">
+      <div className="text-center pt-1 pb-1.5 flex flex-col items-center gap-1">
+        <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.2)]">
           <span className="text-[10px] font-bold tracking-[2px] text-[#859397] uppercase">УРОВЕНЬ {level}</span>
           <span className="w-1 h-1 rounded-full bg-[#27d9f7]" />
           <span className="text-[10px] font-extrabold tracking-[2px] text-[#27d9f7] uppercase font-['Sora']">ПОТОК REAL TIME</span>
         </div>
         {/* Listeners pill */}
-        <div className="flex items-center gap-1.5 text-[#859397] text-[11px] font-medium mt-1">
+        <div className="flex items-center gap-1.5 text-[#859397] text-[11px] font-medium">
           <Users className="w-3.5 h-3.5 text-[#27d9f7]" />
           <span className="font-mono font-bold text-[#dfe2f1]">{radioStatus?.listeners_count || 0}</span>
           <span>слушателей</span>
@@ -461,14 +535,14 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
       </div>
 
       {/* ── КОЛЬЦО + VISUALIZER (кнопка play) ── */}
-      <div className="flex items-center justify-center py-2">
+      <div className="flex items-center justify-center py-1">
         <button
           onClick={isLive ? undefined : audioPlayer.togglePlay}
           disabled={isLive}
           className="relative flex items-center justify-center active:scale-95 transition-transform duration-200 disabled:active:scale-100 disabled:cursor-default"
           aria-label={isLive ? 'own-broadcast' : (audioPlayer.isPlaying ? 'pause' : 'play')}
         >
-          <Visualizer isPlaying={audioPlayer.isPlaying && !isLive} size={220} />
+          <Visualizer isPlaying={audioPlayer.isPlaying && !isLive} size={190} />
           {isLive ? (
             <span
               className="absolute z-10 w-11 h-11 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(39,217,247,0.5)]"
@@ -673,11 +747,25 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
         </button>
       </div>
 
-      {/* ── КНОПКИ ДЕЙСТВИЙ (Кастинг / Статистика потока) ── */}
+      {/* ── КНОПКИ ДЕЙСТВИЙ (Кастинг / Подключение к эфиру / LIVE) ── */}
       <div className="px-4 pb-2">
-        {/* 🔴 LIVE tugmasi — faqat admin/doverenniy uchun */}
-        {(user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'doverenniy') ? (
-          <div className="mb-2.5">
+        {/* Host/Admin/Doverenniy Section */}
+        {canGoLive ? (
+          <div className="mb-2.5 flex flex-col gap-2">
+            {/* Caller Requests Banner for Host */}
+            {pendingMicRequests.length > 0 && (
+              <button
+                onClick={() => setShowCallersModal(true)}
+                className="w-full py-3 px-4 rounded-2xl font-bold text-xs tracking-wide flex items-center justify-between bg-gradient-to-r from-[rgba(39,217,247,0.22)] to-[rgba(5,154,240,0.18)] border border-[rgba(39,217,247,0.45)] text-[#c2f3ff] shadow-[0_0_20px_rgba(39,217,247,0.3)] active:scale-[0.98] transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#27d9f7] animate-ping" />
+                  <span className="font-['Sora']">✋ Запросы в эфир: {pendingMicRequests.length} чел.</span>
+                </span>
+                <span className="text-[11px] font-mono font-bold text-[#27d9f7] underline">Посмотреть</span>
+              </button>
+            )}
+
             <GoLiveButton
               isLive={isLive}
               remainingSec={liveRemainingSec}
@@ -688,19 +776,41 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             />
           </div>
         ) : (
-          <button
-            onClick={() => onNavigate?.('casting')}
-            className="w-full mb-2.5 py-3.5 rounded-2xl font-bold text-sm tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-            style={{
-              background: 'linear-gradient(135deg, rgba(39,217,247,0.15) 0%, rgba(5,154,240,0.1) 100%)',
-              border: '1px solid rgba(39, 217, 247, 0.3)',
-              color: '#c2f3ff',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            <Sparkles className="w-4 h-4 text-[#27d9f7]" strokeWidth={2} />
-            Пройти кастинг — стать ведущим
-          </button>
+          /* Listener Section — Join Live Broadcast! */
+          <div className="mb-2.5 flex flex-col gap-2">
+            {myMicStatus === 'approved' ? (
+              <button
+                onClick={onToggleLive}
+                className="w-full py-3.5 px-4 rounded-2xl font-extrabold text-sm tracking-wider flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-400 via-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_25px_rgba(39,217,247,0.6)] animate-pulse active:scale-[0.98] transition-all font-['Sora']"
+              >
+                <Mic className="w-5 h-5 text-[#060a14]" />
+                {isLive ? '🔴 ВЫ В ЭФИРЕ — ЗАВЕРШИТЬ' : '🎙️ ВЫХОД В ЭФИР — ВКЛЮЧИТЬ МИКРОФОН'}
+              </button>
+            ) : myMicStatus === 'pending' ? (
+              <div className="w-full py-3.5 px-4 rounded-2xl font-bold text-xs tracking-wide flex items-center justify-center gap-2.5 bg-[rgba(39,217,247,0.12)] border border-[rgba(39,217,247,0.4)] text-[#c2f3ff] shadow-[0_0_15px_rgba(39,217,247,0.2)]">
+                <Loader className="w-4 h-4 text-[#27d9f7] animate-spin" />
+                <span>Запрос отправлен... Ожидание ведущего</span>
+              </div>
+            ) : radioStatus?.is_live ? (
+              <button
+                onClick={handleRequestMic}
+                disabled={submittingMicRequest}
+                className="w-full py-3.5 px-4 rounded-2xl font-extrabold text-sm tracking-wider flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#059af0] via-[#27d9f7] to-[#98cbff] text-[#060a14] shadow-[0_0_20px_rgba(39,217,247,0.4)] hover:shadow-[0_0_30px_rgba(39,217,247,0.6)] active:scale-[0.98] transition-all font-['Sora']"
+              >
+                <Mic className="w-4.5 h-4.5 text-[#060a14]" />
+                {submittingMicRequest ? 'Отправка...' : '🎙️ Подключиться к эфиру (Запросить слово)'}
+              </button>
+            ) : null}
+
+            {/* Casting / Permanent Host Button */}
+            <button
+              onClick={() => onNavigate?.('casting')}
+              className="w-full py-3 rounded-2xl font-semibold text-xs tracking-wide flex items-center justify-center gap-2 bg-[rgba(15,19,30,0.6)] border border-[rgba(39,217,247,0.22)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[rgba(39,217,247,0.4)] active:scale-[0.98] transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#27d9f7]" strokeWidth={2} />
+              ⭐ Пройти кастинг — стать постоянным ведущим
+            </button>
+          </div>
         )}
         <button
           onClick={() => setShowStreamModal(true)}
@@ -1070,23 +1180,76 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setShowStudioModal(false)}
-                className="flex-1 h-11 rounded-xl text-sm font-semibold text-[#6f9c72] active:scale-95 transition-transform"
-                style={{ background: 'rgba(200,255,203,0.06)', border: '1px solid rgba(200,255,203,0.14)' }}
+                className="flex-1 h-11 rounded-xl text-sm font-semibold text-[#859397] bg-[rgba(21,26,38,0.7)] border border-[rgba(255,255,255,0.08)] hover:text-[#dfe2f1] active:scale-95 transition-transform"
               >
                 Отмена
               </button>
               <button
                 onClick={submitStudioMessage}
                 disabled={!studioText.trim()}
-                className="flex-1 h-11 rounded-xl text-sm font-bold text-[#05070A] active:scale-95 transition-transform disabled:opacity-40"
-                style={{
-                  background: 'linear-gradient(90deg, #7dffa0, #39FF6A)',
-                  boxShadow: '0 2px 10px rgba(57,255,106,0.25)',
-                }}
+                className="flex-1 h-11 rounded-xl text-sm font-bold text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] active:scale-95 transition-transform disabled:opacity-40 shadow-[0_0_15px_rgba(39,217,247,0.3)]"
               >
                 Отправить
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Callers Modal (для ведущих: список запросов в эфир) ── */}
+      {showCallersModal && (
+        <div className="fixed inset-0 z-[300] bg-[#060a14]/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowCallersModal(false)}>
+          <div
+            className="w-full max-w-[380px] rounded-3xl p-5 bg-[rgba(15,19,30,0.95)] border border-[rgba(39,217,247,0.25)] shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-[#dfe2f1]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(39,217,247,0.15)] mb-3">
+              <div className="flex items-center gap-2">
+                <Mic className="w-4 h-4 text-[#27d9f7]" />
+                <h3 className="text-sm font-bold text-[#dfe2f1] font-['Sora'] uppercase tracking-wider">
+                  Запросы в эфир ({pendingMicRequests.length})
+                </h3>
+              </div>
+              <button onClick={() => setShowCallersModal(false)} className="p-1 rounded-lg text-[#859397] hover:text-[#dfe2f1]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {pendingMicRequests.length === 0 ? (
+              <div className="text-center py-6 text-xs text-[#859397]">
+                Нет активных запросов на подключение
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
+                {pendingMicRequests.map((r) => (
+                  <div
+                    key={r.id}
+                    className="p-3 rounded-2xl bg-[rgba(21,26,38,0.7)] border border-[rgba(39,217,247,0.2)] flex items-center justify-between gap-2"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-[#dfe2f1] truncate">{r.display_name}</span>
+                      {r.telegram_id && (
+                        <span className="font-mono text-[10px] text-[#27d9f7]">ID: {r.telegram_id}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleApproveCaller(r.id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-[#27d9f7] text-[#060a14] active:scale-95 transition-all shadow-[0_0_10px_rgba(39,217,247,0.3)]"
+                      >
+                        В эфир
+                      </button>
+                      <button
+                        onClick={() => handleRejectCaller(r.id)}
+                        className="p-1.5 rounded-xl text-xs bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-95 transition-all"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

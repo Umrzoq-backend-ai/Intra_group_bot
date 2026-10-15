@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, X, Users, MessageSquare, Lock, Loader, Sparkles, CheckCircle, XCircle, Calendar, Music, ArrowLeft, Mic, CreditCard, Trash2, Search, Upload, UserPlus, Check, RefreshCw } from 'lucide-react';
+import {
+  Plus, X, Users, MessageSquare, Lock, Loader, Sparkles, CheckCircle,
+  XCircle, Calendar, Music, ArrowLeft, Mic, CreditCard, Trash2, Search,
+  Upload, UserPlus, Check, RefreshCw, Radio as RadioIcon
+} from 'lucide-react';
 import {
   adminCreateTopic, adminGetTopics, adminCloseTopic,
   getUsers, adminSetLevel, adminSetStaffRole, adminAddPoints, getMe,
@@ -170,7 +174,7 @@ const L: Record<string, Record<string, string>> = {
     pricing_text: 'Text message', pricing_voice: 'Voice message', pricing_slot: 'Broadcast hour (slot)',
     pricing_saved: 'Prices saved',
     grant_access: 'Grant full admin rights', grant_access_title: 'Full administrator rights',
-    grant_access_pick: 'Select', grant_access_hint: 'Pick a user to give them full administrator rights (or remove them, if they already have it). For moderator access, use the Доступ tab.',
+    grant_access_pick: 'Select', grant_access_hint: 'Pick a user to give them full administrator rights (or remove them, if they already have it). For moderator access, use the Users tab.',
     no_candidates: 'No one to grant rights to',
     make_full_admin: '👑 Make administrator', revoke_full_admin: 'Revoke administrator rights',
     confirm_grant_full_admin: 'Give this user FULL administrator rights? They will be able to do everything, including changing other users\' roles/levels, payment, casting and slots.',
@@ -325,14 +329,8 @@ export function Admin() {
   const [showGrantAccess, setShowGrantAccess] = useState(false);
 
   useEffect(() => { loadData(); }, [tab]);
-  // Panelning o'zi kim ekanini bilishi kerak — faqat "haqiqiy" admin
-  // boshqa foydalanuvchilarning rolini o'zgartira oladi, moderator emas.
   useEffect(() => { getMe().then(setMe).catch(() => {}); }, []);
 
-  // Kastingga yangi ariza — bot orqali DM YAGONA kanal bo'lmasin: bu yerda
-  // "Кастинг" tab ustida доим ko'rinadigan значок, admin ko'rib chiqmaguncha
-  // (approve/reject) turadi. Faqat haqiqiy admin ko'radi — moderator
-  // kasting'ga umuman kirolmaydi.
   useEffect(() => {
     if (me?.role !== 'admin') return;
     let cancelled = false;
@@ -352,8 +350,6 @@ export function Admin() {
     };
   }, [me?.role]);
 
-  // Yangi ariza/qaror darhol (20s pollingni kutmasdan) — backend har bir
-  // apply/approve/reject'da "casting_updated" yuboradi.
   useWebSocket({
     city: 'global',
     onMessage: (msg) => {
@@ -371,8 +367,6 @@ export function Admin() {
       else if (tab === 'slots') {
         setSlots(await getAllSlots());
         setUsers(await getUsers());
-        // Slotni yaratishda narx taxminini ko'rsatish uchun — moderator ham
-        // slot yarata oladi, shuning uchun bu o'qish require_staff'da.
         adminGetPricing().then(setPricing).catch(() => {});
       }
       else if (tab === 'music') setTopics(await adminGetTopics());
@@ -396,8 +390,15 @@ export function Admin() {
   async function handleCreateTopic() {
     if (!newTitle.trim()) return;
     setCreating(true);
-    try { await adminCreateTopic(newTitle.trim(), newDesc.trim()); setNewTitle(''); setNewDesc(''); setShowCreate(false); flash('✅'); await loadData(); }
-    catch { flash('❌'); } finally { setCreating(false); }
+    try {
+      await adminCreateTopic(newTitle.trim(), newDesc.trim());
+      setNewTitle('');
+      setNewDesc('');
+      setShowCreate(false);
+      flash('✅');
+      await loadData();
+    } catch { flash('❌'); }
+    finally { setCreating(false); }
   }
 
   async function handleAggregate(topicId: number) {
@@ -425,17 +426,10 @@ export function Admin() {
   }
 
   function handleBack() {
-    // /admin har doim faqat Profil tabidan ochiladi — shuning uchun orqaga
-    // qaytishda o'sha tabga qaytamiz (navigate(-1) Radio'ni remount qilib,
-    // tab holatini 'anons'ga tushirib yuborardi).
     const from = (location.state as { from?: string } | null)?.from;
     navigate('/radio', { replace: true, state: { screen: from || 'profile' } });
   }
 
-  // "Оплата" va "Кастинг" — faqat haqiqiy admin ko'radi. Moderator bu yerga
-  // kirmasligi kerak: to'lov/narxlar hamda kastingni tasdiqlash (bu ham
-  // aslida foydalanuvchini 'doverenniy' qiladi — status o'zgartirish bilan
-  // barobar) FAQAT admin qaroriga tegishli.
   const isFullAdmin = me?.role === 'admin';
   type TabDef = readonly [string, typeof MessageSquare, string];
   const tabDefs: TabDef[] = [
@@ -450,69 +444,79 @@ export function Admin() {
 
   return (
     <div
-      className="rift-zone-u1 bg-[#F5EEDC] text-[#1A1310] overflow-y-auto overscroll-contain"
+      className="bg-[#060a14] text-[#dfe2f1] relative min-h-screen selection:bg-[rgba(39,217,247,0.2)] selection:text-[#c2f3ff] overflow-y-auto overscroll-contain"
       style={{ height: 'var(--app-vh)', WebkitOverflowScrolling: 'touch' }}
     >
-      <div className="max-w-[520px] mx-auto px-3.5 pb-6 flex flex-col gap-4">
-        {/* Telegram'ning o'z native "⋮ ⌄ ✕" paneli tepada bo'lgani uchun,
-            orqaga tugmasi shu bilan to'qnashib bosilmay qolmasin. 76px —
-            RoomsScreen/EfirScreen/Chat.tsx bilan bir xil (avval bu yerda
-            64px edi — qolganlaridan kamroq, mos kelmasdi). */}
+      {/* Background ambient neon glow */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(39,217,247,0.12)_0%,rgba(5,154,240,0.05)_45%,transparent_75%)]" />
+        <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.08)_0%,transparent_70%)]" />
+      </div>
+
+      <div className="max-w-[520px] mx-auto px-3.5 pb-10 flex flex-col gap-4 relative z-10">
+        {/* Header */}
         <header className="flex items-center gap-3" style={{ paddingTop: 'calc(76px + env(safe-area-inset-top))' }}>
-          <button onClick={handleBack} aria-label="Назад" className="glass w-10 h-10 rounded-full flex items-center justify-center shrink-0 active:scale-[0.92] transition-transform duration-150">
-            <ArrowLeft className="w-4.5 h-4.5 text-[#1A1310]" />
+          <button
+            onClick={handleBack}
+            aria-label="Назад"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-[rgba(15,19,30,0.7)] border border-[rgba(39,217,247,0.2)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/50 active:scale-[0.92] transition-all backdrop-blur-xl"
+          >
+            <ArrowLeft className="w-4.5 h-4.5" />
           </button>
           <div className="min-w-0 flex-1">
-            <GlitchText tag="div" text="INTRA GROUP" className="text-[20px] font-extrabold tracking-[3px] logo-gradient leading-tight truncate" />
-            <div className="text-[9px] tracking-[4px] text-[#6b5f4f] mt-1 font-semibold">{tx('title')}</div>
+            <GlitchText
+              tag="div"
+              text="INTRA GROUP"
+              className="text-[20px] font-extrabold tracking-[3px] text-transparent bg-clip-text bg-gradient-to-r from-[#27d9f7] via-[#059af0] to-[#c2f3ff] leading-tight truncate font-['Sora']"
+            />
+            <div className="text-[10px] tracking-[4px] text-[#859397] font-semibold mt-0.5 uppercase font-['Sora']">
+              {tx('title')}
+            </div>
           </div>
-          {/* Admin-panelga kirish huquqini berish — FAQAT haqiqiy admin
-              ko'radi. Moderator (kimga bu huquq berilgan bo'lsa ham) bu
-              tugmani ko'rmaydi — u boshqa hech kimga huquq bera olmaydi. */}
           {isFullAdmin && (
             <button
               onClick={() => setShowGrantAccess(true)}
               aria-label={tx('grant_access')}
-              className="glass w-10 h-10 rounded-full flex items-center justify-center shrink-0 active:scale-[0.92] transition-transform duration-150"
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-[rgba(15,19,30,0.7)] border border-[rgba(39,217,247,0.2)] text-[#27d9f7] hover:bg-[rgba(39,217,247,0.15)] hover:shadow-[0_0_14px_rgba(39,217,247,0.3)] active:scale-[0.92] transition-all backdrop-blur-xl"
             >
-              <UserPlus className="w-4.5 h-4.5 text-[#E0263A]" />
+              <UserPlus className="w-4.5 h-4.5" />
             </button>
           )}
         </header>
 
-        {/* Технический "пультовый" акцент поверх комикс-базы — статус
-            панели как CRT-консоль (см. ТЗ: admin = "status/hierarchy"
-            в комикс-обёртке, но с техническими данными в CRT-стиле). */}
-        <div className="rift-zone-u3 rift-halftone px-3.5 py-2 flex items-center gap-3 overflow-x-auto" style={{ borderRadius: '8px' }}>
-          <span className="text-[9px] tracking-[2px] shrink-0" style={{ color: 'var(--live)' }}>● SYSTEM</span>
-          <span className="text-[11px] tracking-wide shrink-0" style={{ color: 'var(--text)' }}>TOPICS:{topics.length}</span>
-          <span className="text-[11px] tracking-wide shrink-0" style={{ color: 'var(--text)' }}>DRAFTS:{drafts.length}</span>
-          <span className="text-[11px] tracking-wide shrink-0" style={{ color: 'var(--text)' }}>CASTING:{castingApps.length}</span>
-          <span className="rift-crt-cursor text-[11px] tracking-wide shrink-0" style={{ color: 'var(--text)' }}>USERS:{users.length}</span>
+        {/* Telemetry HUD Bar */}
+        <div className="px-4 py-2.5 rounded-2xl flex items-center gap-3.5 overflow-x-auto border border-[rgba(39,217,247,0.18)] bg-[rgba(15,19,30,0.75)] backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.4)] scrollbar-none">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#27d9f7] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#27d9f7]"></span>
+            </span>
+            <span className="text-[10px] font-['Sora'] font-bold tracking-[2px] text-[#27d9f7]">SYSTEM</span>
+          </div>
+          <span className="text-[11px] font-mono tracking-wider text-[#859397] shrink-0">TOPICS:<span className="text-[#dfe2f1] font-bold ml-1">{topics.length}</span></span>
+          <span className="text-[11px] font-mono tracking-wider text-[#859397] shrink-0">DRAFTS:<span className="text-[#dfe2f1] font-bold ml-1">{drafts.length}</span></span>
+          <span className="text-[11px] font-mono tracking-wider text-[#859397] shrink-0">CASTING:<span className="text-[#dfe2f1] font-bold ml-1">{castingApps.length}</span></span>
+          <span className="text-[11px] font-mono tracking-wider text-[#859397] shrink-0">USERS:<span className="text-[#dfe2f1] font-bold ml-1">{users.length}</span></span>
         </div>
 
-        {/* Tabs — hammasi bir vaqtda ko'rinadi (flex-wrap), skroll bilan
-            yashirinib qolmasin: "Доступ" (users) tab aynan shu sababdan
-            topilmay qolgan edi — gorizontal skrollda 6-o'rinda, ekrandan
-            tashqarida edi va hech qanday skroll ishorasi yo'q edi. */}
+        {/* Tabs Bar */}
         <div className="flex flex-wrap gap-2">
           {tabDefs.map(([t, Icon, label]) => {
             const active = tab === t;
             return (
-              <button key={t} onClick={() => setTab(t as any)}
-                className={`relative flex items-center gap-1.5 py-2.5 px-4 rounded-full border font-bold text-[11px] transition-all duration-200 active:scale-[0.95] ${
-                  active ? 'text-[#FFFBF0] border-transparent' : 'glass text-[#6b5f4f] border-[rgba(224,38,58,0.14)]'
+              <button
+                key={t}
+                onClick={() => setTab(t as any)}
+                className={`relative flex items-center gap-1.5 py-2 px-3.5 rounded-full border text-[11px] font-bold transition-all duration-200 active:scale-[0.95] ${
+                  active
+                    ? 'text-[#060a14] border-transparent bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_16px_rgba(39,217,247,0.4)]'
+                    : 'bg-[rgba(15,19,30,0.65)] text-[#859397] border-[rgba(39,217,247,0.18)] hover:text-[#dfe2f1] hover:border-[#27d9f7]/40 backdrop-blur-md'
                 }`}
-                style={active ? { background: 'linear-gradient(135deg, #ff4f63, #E0263A)', boxShadow: '0 4px 18px rgba(224,38,58,0.45)' } : undefined}
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? 'text-[#060a14]' : 'text-[#859397]'}`} />
                 <span className="whitespace-nowrap">{label}</span>
-                {/* Yangi kasting arizalari — admin ko'rib chiqmaguncha turadi */}
                 {t === 'casting' && pendingCastingCount > 0 && (
-                  <span
-                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                    style={{ background: '#E0263A', boxShadow: '0 0 0 2px #F5EEDC' }}
-                  >
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[9px] font-extrabold text-[#060a14] bg-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.8)] ring-2 ring-[#060a14]">
                     {pendingCastingCount > 9 ? '9+' : pendingCastingCount}
                   </span>
                 )}
@@ -522,20 +526,26 @@ export function Admin() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader className="w-8 h-8 text-[#E0263A] animate-spin" /></div>
+          <div className="flex justify-center py-16">
+            <Loader className="w-8 h-8 text-[#27d9f7] animate-spin" />
+          </div>
         ) : tab === 'topics' ? (
-          <TopicsTab topics={topics} tx={tx} showCreate={showCreate} setShowCreate={setShowCreate}
+          <TopicsTab
+            topics={topics} tx={tx} showCreate={showCreate} setShowCreate={setShowCreate}
             newTitle={newTitle} setNewTitle={setNewTitle} newDesc={newDesc} setNewDesc={setNewDesc}
             creating={creating} aggregating={aggregating}
             onCreateTopic={handleCreateTopic}
             onCloseTopic={async (id: number) => { try { await adminCloseTopic(id); flash('✅'); await loadData(); } catch { flash('❌'); } }}
-            onAggregate={handleAggregate} />
+            onAggregate={handleAggregate}
+          />
         ) : tab === 'drafts' ? (
           <DraftsTab drafts={drafts} tx={tx} onView={handleViewDraft} onApprove={handleApproveDraft} onReject={handleRejectDraft} />
         ) : tab === 'casting' && isFullAdmin ? (
-          <CastingTab apps={castingApps} tx={tx}
+          <CastingTab
+            apps={castingApps} tx={tx}
             onApprove={async (id: number, note: string) => { try { await adminApproveCasting(id, note); flash('✅'); await loadData(); } catch { flash('❌'); } }}
-            onReject={async (id: number, note: string) => { try { await adminRejectCasting(id, note); flash('✅'); await loadData(); } catch { flash('❌'); } }} />
+            onReject={async (id: number, note: string) => { try { await adminRejectCasting(id, note); flash('✅'); await loadData(); } catch { flash('❌'); } }}
+          />
         ) : tab === 'slots' ? (
           <SlotsTab slots={slots} users={users} pricing={pricing} isFullAdmin={isFullAdmin} onReload={loadData} flash={flash} />
         ) : tab === 'music' ? (
@@ -543,7 +553,8 @@ export function Admin() {
         ) : tab === 'payment' && isFullAdmin ? (
           <PaymentTab tx={tx} settings={paymentSettings} packages={packages} pricing={pricing} flash={flash} onReload={loadData} />
         ) : (
-          <UsersTab users={users} tx={tx} isFullAdmin={isFullAdmin}
+          <UsersTab
+            users={users} tx={tx} isFullAdmin={isFullAdmin}
             onSetLevel={async (id: number, lvl: number) => { try { await adminSetLevel(id, lvl); flash('✅'); await loadData(); } catch { flash('❌'); } }}
             onSetRole={async (id: number, role: StaffRole) => {
               try { await adminSetStaffRole(id, role); flash('✅'); await loadData(); }
@@ -556,13 +567,12 @@ export function Admin() {
                 flash('✅ Удалён');
                 await loadData();
               } catch (e: any) { flash('❌ ' + (e.message || '')); }
-            }} />
+            }}
+          />
         )}
       </div>
 
-      {/* Poinт berish modali — admin xohlagan foydalanuvchiga, xohlagan
-          vaqtda, xohlagan miqdorda point qo'sha oladi (native prompt()
-          Telegram Mini App'da ishlamasligi mumkin edi). */}
+      {/* Add Points Modal */}
       {addPointsTarget && (
         <AddPointsModal
           user={addPointsTarget}
@@ -579,13 +589,15 @@ export function Admin() {
         />
       )}
 
-      {/* Draft ko'rish modal */}
+      {/* Draft Modal */}
       {activeDraft && (
-        <DraftModal draft={activeDraft} tx={tx} onClose={() => setActiveDraft(null)}
-          onApprove={handleApproveDraft} onReject={handleRejectDraft} />
+        <DraftModal
+          draft={activeDraft} tx={tx} onClose={() => setActiveDraft(null)}
+          onApprove={handleApproveDraft} onReject={handleRejectDraft}
+        />
       )}
 
-      {/* To'liq admin huquqi berish — header'dagi tez tugma */}
+      {/* Grant Access Modal */}
       {showGrantAccess && (
         <GrantAccessModal
           tx={tx}
@@ -596,8 +608,9 @@ export function Admin() {
         />
       )}
 
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-4 py-2 rounded-xl text-sm text-[#1A1310] border border-[rgba(224,38,58,0.4)] z-[200]">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-2xl text-sm font-semibold text-[#dfe2f1] bg-[#0f131e]/95 border border-[rgba(39,217,247,0.35)] shadow-[0_8px_30px_rgba(0,0,0,0.7),0_0_20px_rgba(39,217,247,0.2)] backdrop-blur-xl z-[200]">
           {toast}
         </div>
       )}
@@ -605,50 +618,84 @@ export function Admin() {
   );
 }
 
+// ── TopicsTab ──────────────────────────────────────────────
 function TopicsTab({ topics, tx, showCreate, setShowCreate, newTitle, setNewTitle, newDesc, setNewDesc, creating, aggregating, onCreateTopic, onCloseTopic, onAggregate }: any) {
   return (
     <div className="flex flex-col gap-3">
       {!showCreate ? (
-        <button onClick={() => setShowCreate(true)} className="glass rounded-2xl py-3 flex items-center justify-center gap-2 text-sm font-bold text-[#E0263A] active:scale-[0.98]">
+        <button
+          onClick={() => setShowCreate(true)}
+          className="rounded-2xl py-3.5 flex items-center justify-center gap-2 text-sm font-bold text-[#27d9f7] bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.25)] hover:bg-[rgba(39,217,247,0.14)] hover:shadow-[0_0_15px_rgba(39,217,247,0.25)] transition-all active:scale-[0.98]"
+        >
           <Plus className="w-4 h-4" /> {tx('new_topic')}
         </button>
       ) : (
-        <div className="glass rounded-2xl p-4 flex flex-col gap-3">
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.22)] rounded-3xl p-4.5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[#E0263A]">{tx('new_topic')}</span>
-            <button onClick={() => setShowCreate(false)}><X className="w-4 h-4 text-[#6b5f4f]" /></button>
+            <span className="text-sm font-bold text-[#27d9f7] font-['Sora']">{tx('new_topic')}</span>
+            <button onClick={() => setShowCreate(false)} className="text-[#859397] hover:text-[#dfe2f1]">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <input className="w-full bg-[rgba(255,251,240,0.7)] border border-[rgba(224,38,58,0.18)] rounded-xl px-4 py-3 text-sm text-[#1A1310] outline-none" placeholder={tx('topic_title')} value={newTitle} onChange={(e: any) => setNewTitle(e.target.value)} />
-          <input className="w-full bg-[rgba(255,251,240,0.7)] border border-[rgba(224,38,58,0.18)] rounded-xl px-4 py-3 text-sm text-[#1A1310] outline-none" placeholder={tx('topic_desc')} value={newDesc} onChange={(e: any) => setNewDesc(e.target.value)} />
-          <button onClick={onCreateTopic} disabled={creating || !newTitle.trim()} className="w-full py-3 rounded-xl font-bold text-sm text-[#FFFBF0] disabled:opacity-40" style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}>
-            {creating ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : tx('create')}
+          <input
+            className="w-full bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.2)] rounded-xl px-4 py-3 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.3)] transition-all"
+            placeholder={tx('topic_title')}
+            value={newTitle}
+            onChange={(e: any) => setNewTitle(e.target.value)}
+          />
+          <input
+            className="w-full bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.2)] rounded-xl px-4 py-3 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.3)] transition-all"
+            placeholder={tx('topic_desc')}
+            value={newDesc}
+            onChange={(e: any) => setNewDesc(e.target.value)}
+          />
+          <button
+            onClick={onCreateTopic}
+            disabled={creating || !newTitle.trim()}
+            className="w-full py-3 rounded-xl font-bold text-sm text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_16px_rgba(39,217,247,0.35)] hover:shadow-[0_0_22px_rgba(39,217,247,0.5)] active:scale-[0.98] disabled:opacity-40 transition-all"
+          >
+            {creating ? <Loader className="w-4 h-4 animate-spin mx-auto text-[#060a14]" /> : tx('create')}
           </button>
         </div>
       )}
 
       {topics.length === 0 ? (
-        <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_topics')}</div>
-      ) : topics.map((t: Topic, idx: number) => (
-        <div key={t.id} className={`glass rift-halftone p-4 ${idx % 2 === 0 ? 'rift-torn-b' : 'rift-torn-c'}`}>
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+          {tx('no_topics')}
+        </div>
+      ) : topics.map((t: Topic) => (
+        <div key={t.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[rgba(39,217,247,0.3)] transition-all">
           <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase ${t.status === 'active' ? 'bg-[rgba(28,63,214,0.15)] text-[#1c3fd6]' : 'bg-[rgba(138,143,152,0.15)] text-[#6b5f4f]'}`}>{tx(t.status === 'active' ? 'active' : 'closed')}</span>
-                <span className="text-[10px] text-[#6b5f4f]">{t.opinion_count} {tx('opinions')}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  t.status === 'active'
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                    : 'bg-slate-500/15 border border-slate-500/25 text-[#859397]'
+                }`}>
+                  {tx(t.status === 'active' ? 'active' : 'closed')}
+                </span>
+                <span className="text-[11px] font-mono text-[#859397]">{t.opinion_count} {tx('opinions')}</span>
               </div>
-              <div className="text-sm font-bold text-[#1A1310]">{t.title}</div>
+              <div className="text-sm font-bold text-[#dfe2f1]">{t.title}</div>
+              {t.description && <div className="text-xs text-[#859397] mt-1 leading-relaxed">{t.description}</div>}
             </div>
             {t.status === 'active' && (
-              <button onClick={() => onCloseTopic(t.id)} className="ml-2 p-2 rounded-lg bg-[rgba(224,38,58,0.1)] text-[#E0263A]">
+              <button
+                onClick={() => onCloseTopic(t.id)}
+                className="ml-2 p-2 rounded-xl bg-rose-500/15 border border-rose-500/25 text-rose-400 hover:bg-rose-500/25 transition-all shrink-0"
+                title={tx('close')}
+              >
                 <Lock className="w-4 h-4" />
               </button>
             )}
           </div>
-          {/* Agregatsiya tugmasi — fikr bo'lsa ko'rinadi */}
           {t.opinion_count >= 3 && (
-            <button onClick={() => onAggregate(t.id)} disabled={aggregating === t.id}
-              className="w-full mt-2 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-[#FFFBF0] disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #1C3FD6, #1C3FD6)' }}>
+            <button
+              onClick={() => onAggregate(t.id)}
+              disabled={aggregating === t.id}
+              className="w-full mt-2 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_14px_rgba(39,217,247,0.3)] hover:shadow-[0_0_20px_rgba(39,217,247,0.45)] active:scale-[0.98] disabled:opacity-50 transition-all"
+            >
               {aggregating === t.id ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               {tx('aggregate')} ({t.opinion_count} {tx('opinions')})
             </button>
@@ -659,39 +706,62 @@ function TopicsTab({ topics, tx, showCreate, setShowCreate, newTitle, setNewTitl
   );
 }
 
+// ── DraftsTab ──────────────────────────────────────────────
 function DraftsTab({ drafts, tx, onView, onApprove, onReject }: any) {
-  const statusColor: Record<string, string> = {
-    pending: 'bg-[rgba(234,179,8,0.15)] text-[#1C3FD6]',
-    approved: 'bg-[rgba(28,63,214,0.15)] text-[#1c3fd6]',
-    rejected: 'bg-[rgba(138,143,152,0.15)] text-[#6b5f4f]',
-  };
-  if (drafts.length === 0) return <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_drafts')}</div>;
+  if (drafts.length === 0) return (
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+      {tx('no_drafts')}
+    </div>
+  );
   return (
     <div className="flex flex-col gap-3">
       {drafts.map((d: Draft) => (
-        <div key={d.id} className="glass rounded-2xl p-4">
+        <div key={d.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[rgba(39,217,247,0.3)] transition-all">
           <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase ${statusColor[d.status] || ''}`}>{tx(d.status)}</span>
-                <span className="text-[10px] text-[#6b5f4f]">{d.source_count} {tx('sources')}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  d.status === 'pending'
+                    ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+                    : d.status === 'approved'
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                    : 'bg-rose-500/15 border border-rose-500/25 text-rose-400'
+                }`}>
+                  {tx(d.status)}
+                </span>
+                <span className="text-[11px] font-mono text-[#859397]">{d.source_count} {tx('sources')}</span>
               </div>
-              <div className="text-sm font-bold text-[#1A1310]">🎙 {d.main_topic}</div>
-              {d.script_preview && <div className="text-[11px] text-[#6b5f4f] mt-1 line-clamp-2">{d.script_preview.replace(/^\[META:.*?\]\n\n/, '')}</div>}
+              <div className="text-sm font-bold text-[#dfe2f1]">🎙 {d.main_topic}</div>
+              {d.script_preview && (
+                <div className="text-[11px] text-[#859397] mt-1.5 line-clamp-2 leading-relaxed">
+                  {d.script_preview.replace(/^\[META:.*?\]\n\n/, '')}
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => onView(d.id)} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[rgba(224,38,58,0.08)] text-[#E0263A] flex items-center justify-center gap-1">
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <button
+              onClick={() => onView(d.id)}
+              className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.2)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/40 flex items-center justify-center gap-1.5 transition-all"
+            >
               👁 {tx('view')}
             </button>
-            {d.status === 'pending' && <>
-              <button onClick={() => onApprove(d.id)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-[rgba(28,63,214,0.15)] text-[#1c3fd6] flex items-center justify-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" /> {tx('approve')}
-              </button>
-              <button onClick={() => onReject(d.id)} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[rgba(224,38,58,0.1)] text-[#E0263A] flex items-center justify-center gap-1">
-                <XCircle className="w-3.5 h-3.5" /> {tx('reject')}
-              </button>
-            </>}
+            {d.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => onApprove(d.id)}
+                  className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> {tx('approve')}
+                </button>
+                <button
+                  onClick={() => onReject(d.id)}
+                  className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> {tx('reject')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -699,63 +769,72 @@ function DraftsTab({ drafts, tx, onView, onApprove, onReject }: any) {
   );
 }
 
+// ── DraftModal ─────────────────────────────────────────────
 function DraftModal({ draft, tx, onClose, onApprove, onReject }: any) {
   const meta = draft.meta || {};
   const dialog = draft.dialog || draft.script || '';
   const wordCount = dialog.split(/\s+/).filter(Boolean).length;
   return (
-    <div className="fixed inset-0 z-[300] bg-black/80 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] bg-[#060a14]/85 backdrop-blur-md flex flex-col" onClick={onClose}>
       <div
         className="flex-1 overflow-y-auto p-4 max-w-[520px] mx-auto w-full"
         style={{ paddingTop: 'calc(76px + env(safe-area-inset-top))' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="glass rounded-2xl p-5 flex flex-col gap-4 mb-4">
-          {/* Header — Telegram'ning o'z native "⋮ ⌄ ✕" paneli bilan
-              to'qnashmasin (avval bu yerda umuman отступ yo'q edi). */}
+        <div className="bg-[rgba(15,19,30,0.95)] border border-[rgba(39,217,247,0.25)] rounded-3xl p-5 flex flex-col gap-4 mb-4 shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-[#dfe2f1]">
           <div className="flex items-center justify-between">
-            <div className="text-base font-bold text-[#E0263A]">🎙 {draft.main_topic}</div>
-            <button onClick={onClose}><X className="w-5 h-5 text-[#6b5f4f]" /></button>
+            <div className="text-base font-bold text-[#27d9f7] font-['Sora']">🎙 {draft.main_topic}</div>
+            <button onClick={onClose} className="text-[#859397] hover:text-[#dfe2f1]">
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* META: pozitsiyalar */}
           {meta.positions && (
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-bold text-[#1c3fd6] uppercase tracking-wide">{tx('positions')}</div>
-              {[1,2,3].map(i => {
+              <div className="text-[11px] font-bold text-[#27d9f7] uppercase tracking-wider font-['Sora']">{tx('positions')}</div>
+              {[1, 2, 3].map((i) => {
                 const p = meta.positions[`p${i}`];
                 if (!p) return null;
                 return (
-                  <div key={i} className="rounded-xl px-3 py-2.5" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.15)' }}>
+                  <div key={i} className="rounded-xl px-3.5 py-3 bg-[rgba(10,14,24,0.6)] border border-[rgba(39,217,247,0.18)]">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-[#1c3fd6]">#{i}</span>
-                      <span className="text-[10px] text-[#6b5f4f]">{p.percent}%</span>
+                      <span className="text-[10px] font-bold text-[#27d9f7]">#{i}</span>
+                      <span className="text-[10px] font-mono text-[#859397]">{p.percent}%</span>
                     </div>
-                    <div className="text-[12px] text-[#1A1310]">{p.summary}</div>
+                    <div className="text-xs text-[#dfe2f1] leading-relaxed">{p.summary}</div>
                   </div>
                 );
               })}
             </div>
           )}
+
           {meta.music_suggestion && (
-            <div className="text-[11px] text-[#6b5f4f]">🎵 {tx('music')}: {meta.music_suggestion}</div>
+            <div className="text-[11px] text-[#859397] flex items-center gap-1.5">
+              <Music className="w-3.5 h-3.5 text-[#27d9f7]" /> {tx('music')}: <span className="text-[#dfe2f1]">{meta.music_suggestion}</span>
+            </div>
           )}
 
-          {/* Dialog matni */}
           <div>
-            <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide mb-2">{tx('dialog_title')} · {wordCount} {tx('words')}</div>
-            <div className="text-[12px] text-[#6b5f4f] leading-relaxed whitespace-pre-line max-h-[40vh] overflow-y-auto rounded-xl p-3" style={{ background: 'rgba(255,251,240,0.5)' }}>
+            <div className="text-[11px] font-bold text-[#27d9f7] uppercase tracking-wider mb-2 font-['Sora']">
+              {tx('dialog_title')} · {wordCount} {tx('words')}
+            </div>
+            <div className="text-xs text-[#dfe2f1] leading-relaxed whitespace-pre-line max-h-[40vh] overflow-y-auto rounded-xl p-3.5 bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.18)] font-sans">
               {dialog}
             </div>
           </div>
 
-          {/* Tugmalar */}
           {draft.status === 'pending' && (
-            <div className="flex gap-3">
-              <button onClick={() => onApprove(draft.id)} className="flex-1 py-3 rounded-xl font-bold text-sm text-[#FFFBF0] flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg, #1c3fd6, #E0263A)' }}>
+            <div className="flex gap-3 mt-1">
+              <button
+                onClick={() => onApprove(draft.id)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-[#060a14] bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_16px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
                 <CheckCircle className="w-4 h-4" /> {tx('approve')}
               </button>
-              <button onClick={() => onReject(draft.id)} className="flex-1 py-3 rounded-xl font-semibold text-sm text-[#E0263A] bg-[rgba(224,38,58,0.1)] flex items-center justify-center gap-2">
+              <button
+                onClick={() => onReject(draft.id)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-rose-400 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
                 <XCircle className="w-4 h-4" /> {tx('reject')}
               </button>
             </div>
@@ -766,31 +845,34 @@ function DraftModal({ draft, tx, onClose, onApprove, onReject }: any) {
   );
 }
 
-// ── SlotsTab — Efir jadvali boshqaruvi ──────────────────────
+// ── CastingTab ─────────────────────────────────────────────
 function CastingTab({ apps, tx, onApprove, onReject }: any) {
   const [noteById, setNoteById] = useState<Record<number, string>>({});
-  if (apps.length === 0) return <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_casting')}</div>;
+  if (apps.length === 0) return (
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+      {tx('no_casting')}
+    </div>
+  );
   return (
     <div className="flex flex-col gap-3">
       {apps.map((a: CastingApp) => (
-        <div key={a.id} className="glass rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(224,38,58,0.15)' }}>
-              <Mic className="w-4 h-4 text-[#E0263A]" />
+        <div key={a.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 bg-[rgba(39,217,247,0.12)] border border-[rgba(39,217,247,0.25)] text-[#27d9f7]">
+              <Mic className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-[#1A1310] truncate">
+              <div className="text-sm font-bold text-[#dfe2f1] truncate">
                 {a.display_name || a.username || `id${a.user_id}`}
               </div>
-              <div className="text-[10px] text-[#6b5f4f]">{new Date(a.created_at).toLocaleString()}</div>
+              <div className="text-[10px] font-mono text-[#859397]">{new Date(a.created_at).toLocaleString()}</div>
             </div>
           </div>
 
-          <audio controls src={`${API_URL}${a.audio_url}?token=${getToken()}`} className="w-full h-9" />
+          <audio controls src={`${API_URL}${a.audio_url}?token=${getToken()}`} className="w-full h-9 rounded-xl accent-[#27d9f7]" />
 
           {a.note && (
-            <div className="text-[11px] text-[#6b5f4f] bg-[rgba(255,251,240,0.4)] rounded-xl p-3 leading-relaxed">
+            <div className="text-xs text-[#dfe2f1] bg-[rgba(10,14,24,0.6)] border border-[rgba(39,217,247,0.14)] rounded-xl p-3 leading-relaxed">
               {a.note}
             </div>
           )}
@@ -799,19 +881,19 @@ function CastingTab({ apps, tx, onApprove, onReject }: any) {
             value={noteById[a.id] ?? ''}
             onChange={(e) => setNoteById((prev) => ({ ...prev, [a.id]: e.target.value }))}
             placeholder={tx('casting_note_placeholder')}
-            className="w-full bg-[rgba(255,251,240,0.6)] border border-[rgba(224,38,58,0.2)] rounded-xl px-3 py-2 text-xs text-[#1A1310] outline-none"
+            className="w-full bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] rounded-xl px-3 py-2 text-xs text-[#dfe2f1] placeholder:text-[#859397] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_10px_rgba(39,217,247,0.25)] transition-all"
           />
 
           <div className="flex gap-2">
             <button
               onClick={() => onApprove(a.id, noteById[a.id] || '')}
-              className="flex-1 py-2 rounded-xl text-xs font-bold bg-[rgba(28,63,214,0.15)] text-[#1c3fd6] flex items-center justify-center gap-1"
+              className="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 flex items-center justify-center gap-1 transition-all"
             >
               <CheckCircle className="w-3.5 h-3.5" /> {tx('casting_approve')}
             </button>
             <button
               onClick={() => onReject(a.id, noteById[a.id] || '')}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[rgba(224,38,58,0.1)] text-[#E0263A] flex items-center justify-center gap-1"
+              className="flex-1 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 flex items-center justify-center gap-1 transition-all"
             >
               <XCircle className="w-3.5 h-3.5" /> {tx('casting_reject')}
             </button>
@@ -822,6 +904,7 @@ function CastingTab({ apps, tx, onApprove, onReject }: any) {
   );
 }
 
+// ── SlotsTab ───────────────────────────────────────────────
 function SlotsTab({ slots, users, pricing, isFullAdmin, onReload, flash }: any) {
   const pricePerHour = pricing ? parseFloat(pricing.price_slot_per_hour) : 200;
   const [showCreate, setShowCreate] = useState(false);
@@ -834,11 +917,11 @@ function SlotsTab({ slots, users, pricing, isFullAdmin, onReload, flash }: any) 
     duration_min: '60',
   });
 
-  const statusColors: Record<string, string> = {
-    scheduled: 'bg-[rgba(224,38,58,0.1)] text-[#E0263A]',
-    live:       'bg-[rgba(224,38,58,0.15)] text-[#E0263A]',
-    done:       'bg-[rgba(28,63,214,0.1)] text-[#1c3fd6]',
-    cancelled:  'bg-[rgba(138,143,152,0.1)] text-[#6b5f4f]',
+  const statusPills: Record<string, string> = {
+    scheduled: 'bg-amber-500/15 border border-amber-500/30 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.2)]',
+    live:      'bg-[#27d9f7]/15 border border-[#27d9f7]/30 text-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.3)] animate-pulse',
+    done:      'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400',
+    cancelled: 'bg-slate-500/15 border border-slate-500/20 text-[#859397]',
   };
 
   async function handleCreate() {
@@ -869,127 +952,134 @@ function SlotsTab({ slots, users, pricing, isFullAdmin, onReload, flash }: any) 
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Slot ochish — resurs (vaqt + poinт xarajati) taqsimlash qarori,
-          shuning uchun FAQAT haqiqiy admin. Moderator pastdagi ro'yxatni
-          ko'radi va statusni boshqaradi, lekin yangi slot ocha olmaydi. */}
       {!isFullAdmin ? null : !showCreate ? (
-        <button onClick={() => setShowCreate(true)}
-          className="glass rounded-2xl py-3 flex items-center justify-center gap-2 text-sm font-bold text-[#E0263A] active:scale-[0.98]">
+        <button
+          onClick={() => setShowCreate(true)}
+          className="rounded-2xl py-3.5 flex items-center justify-center gap-2 text-sm font-bold text-[#27d9f7] bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.25)] hover:bg-[rgba(39,217,247,0.14)] hover:shadow-[0_0_15px_rgba(39,217,247,0.25)] transition-all active:scale-[0.98]"
+        >
           <Plus className="w-4 h-4" /> Новый слот эфира
         </button>
       ) : (
-        <div className="glass rounded-2xl p-4 flex flex-col gap-3">
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.22)] rounded-3xl p-4.5 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[#E0263A]">Новый слот</span>
-            <button onClick={() => setShowCreate(false)}><X className="w-4 h-4 text-[#6b5f4f]" /></button>
+            <span className="text-sm font-bold text-[#27d9f7] font-['Sora']">Новый слот</span>
+            <button onClick={() => setShowCreate(false)} className="text-[#859397] hover:text-[#dfe2f1]">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          {/* Ведущий tanlash */}
           <select
-            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-            style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] bg-[#0a0e18] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
             value={form.host_user_id}
             onChange={e => setForm(f => ({ ...f, host_user_id: e.target.value }))}
           >
-            <option value="">Выбрать ведущего (уровень 3)...</option>
+            <option value="" className="bg-[#0f131e] text-[#859397]">Выбрать ведущего (уровень 3)...</option>
             {trustedUsers.map((u: any) => (
-              <option key={u.id} value={u.id}>
+              <option key={u.id} value={u.id} className="bg-[#0f131e] text-[#dfe2f1]">
                 {u.display_name || u.username || `ID ${u.telegram_id}`} — {u.role === 'admin' ? 'ADMIN' : u.role === 'moderator' ? 'MODERATOR' : `Уровень ${u.level}`}
               </option>
             ))}
           </select>
           <input
-            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-            style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] placeholder:text-[#859397] bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
             placeholder="Название эфира"
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
           />
           <input
-            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-            style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] placeholder:text-[#859397] bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
             placeholder="Описание (необязательно)"
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
           />
           <div className="flex gap-2">
             <div className="flex-1">
-              <div className="text-[10px] text-[#6b5f4f] mb-1">Дата и время</div>
+              <div className="text-[10px] text-[#859397] mb-1 font-['Sora']">Дата и время</div>
               <input
                 type="datetime-local"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-                style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
                 value={form.scheduled_at}
                 onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
               />
             </div>
             <div className="w-24">
-              <div className="text-[10px] text-[#6b5f4f] mb-1">Длит. (мин)</div>
+              <div className="text-[10px] text-[#859397] mb-1 font-['Sora']">Длит. (мин)</div>
               <input
                 type="number"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-                style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
                 value={form.duration_min}
                 onChange={e => setForm(f => ({ ...f, duration_min: e.target.value }))}
               />
             </div>
           </div>
-          <div className="text-[10px] text-[#6b5f4f] text-center">
-            Со счёта ведущего спишется ≈ {((parseInt(form.duration_min) || 60) / 60 * pricePerHour).toFixed(0)} поинтов за слот
+          <div className="text-[11px] text-[#859397] text-center font-mono">
+            Со счёта ведущего спишется ≈ <span className="text-[#27d9f7] font-bold">{((parseInt(form.duration_min) || 60) / 60 * pricePerHour).toFixed(0)}</span> поинтов за слот
           </div>
-          <button onClick={handleCreate} disabled={creating || !form.title.trim() || !form.host_user_id || !form.scheduled_at}
-            className="w-full py-3 rounded-xl font-bold text-sm text-[#FFFBF0] disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}>
-            {creating ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Создать слот'}
+          <button
+            onClick={handleCreate}
+            disabled={creating || !form.title.trim() || !form.host_user_id || !form.scheduled_at}
+            className="w-full py-3 rounded-xl font-bold text-sm text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_16px_rgba(39,217,247,0.35)] hover:shadow-[0_0_24px_rgba(39,217,247,0.5)] active:scale-[0.98] disabled:opacity-40 transition-all"
+          >
+            {creating ? <Loader className="w-4 h-4 animate-spin mx-auto text-[#060a14]" /> : 'Создать слот'}
           </button>
         </div>
       )}
 
       {slots.length === 0 ? (
-        <div className="glass p-8 text-center text-[#6b5f4f] text-sm">Нет слотов эфира</div>
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+          Нет слотов эфира
+        </div>
       ) : slots.map((s: BroadcastSlot) => (
-        <div key={s.id} className="glass rounded-2xl p-4">
+        <div key={s.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[rgba(39,217,247,0.3)] transition-all">
           <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase ${statusColors[s.status] || ''}`}>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusPills[s.status] || ''}`}>
                   {s.is_live_now ? '🔴 LIVE' : s.status}
                 </span>
-                <span className="text-[10px] text-[#6b5f4f]">{s.duration_min} мин</span>
+                <span className="text-[11px] font-mono text-[#859397]">{s.duration_min} мин</span>
               </div>
-              <div className="text-sm font-bold text-[#1A1310]">{s.title}</div>
+              <div className="text-sm font-bold text-[#dfe2f1]">{s.title}</div>
+              {s.description && <div className="text-xs text-[#859397] mt-1">{s.description}</div>}
               {s.display_name || s.username ? (
-                <div className="text-[11px] text-[#6b5f4f] mt-0.5">
-                  📻 {s.display_name || s.username}
+                <div className="text-[11px] text-[#859397] mt-1 flex items-center gap-1.5">
+                  <RadioIcon className="w-3.5 h-3.5 text-[#27d9f7]" /> {s.display_name || s.username}
                 </div>
               ) : null}
-              <div className="text-[10px] text-[#6b5f4f] mt-0.5">
+              <div className="text-[10px] font-mono text-[#859397] mt-1">
                 🕐 {new Date(s.scheduled_at).toLocaleString()}
               </div>
             </div>
           </div>
-          {/* Status tugmalari */}
-          <div className="flex gap-1.5 mt-2 flex-wrap">
+          <div className="flex gap-2 mt-3 flex-wrap">
             {s.status === 'scheduled' && (
-              <button onClick={() => handleStatus(s.id, 'live')}
-                className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-[rgba(224,38,58,0.15)] text-[#E0263A]">
+              <button
+                onClick={() => handleStatus(s.id, 'live')}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#27d9f7]/15 border border-[#27d9f7]/30 text-[#27d9f7] hover:bg-[#27d9f7]/25 hover:shadow-[0_0_10px_rgba(39,217,247,0.25)] transition-all"
+              >
                 ▶ Live
               </button>
             )}
             {s.status === 'live' && (
-              <button onClick={() => handleStatus(s.id, 'done')}
-                className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-[rgba(28,63,214,0.15)] text-[#1c3fd6]">
+              <button
+                onClick={() => handleStatus(s.id, 'done')}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+              >
                 ✓ Завершить
               </button>
             )}
             {['scheduled', 'live'].includes(s.status) && (
-              <button onClick={() => handleStatus(s.id, 'cancelled')}
-                className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-[rgba(224,38,58,0.08)] text-[#E0263A]">
+              <button
+                onClick={() => handleStatus(s.id, 'cancelled')}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 transition-all"
+              >
                 ✕ Отменить
               </button>
             )}
             {s.share_url && (
-              <a href={s.share_url} target="_blank" rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-[rgba(224,38,58,0.08)] text-[#E0263A]">
+              <a
+                href={s.share_url} target="_blank" rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.2)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/40 transition-all"
+              >
                 🔗 Ссылка
               </a>
             )}
@@ -1000,7 +1090,7 @@ function SlotsTab({ slots, users, pricing, isFullAdmin, onReload, flash }: any) 
   );
 }
 
-// ── MusicTab — musiqa nomzodlari va ovoz berish natijalari ──
+// ── MusicTab ───────────────────────────────────────────────
 function MusicTab({ topics, tx, flash }: any) {
   const [topicId, setTopicId] = useState<number | null>(null);
   const [noms, setNoms] = useState<MusicNomination[]>([]);
@@ -1055,28 +1145,41 @@ function MusicTab({ topics, tx, flash }: any) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Дefolt musiqa — efirda navbatda AI-segment yoki jonli efir yo'q
-          paytda jimlik o'rniga shu trek chalinadi (topic tanlanishidan
-          mustaqil, global sozlama). */}
-      <div className="glass rounded-2xl p-4">
-        <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide mb-2">{tx('default_music_title')}</div>
+      {/* Default Music Container */}
+      <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+        <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider mb-2.5">
+          {tx('default_music_title')}
+        </div>
         {defaultMusicLoading ? (
-          <div className="flex justify-center py-2"><Loader className="w-4 h-4 text-[#E0263A] animate-spin" /></div>
+          <div className="flex justify-center py-2"><Loader className="w-4 h-4 text-[#27d9f7] animate-spin" /></div>
         ) : (
           <>
-            <div className="text-sm text-[#1A1310] mb-3">
-              {defaultMusicName ? `🎵 ${defaultMusicName}` : <span className="text-[#6b5f4f]">{tx('default_music_none')}</span>}
+            <div className="text-sm text-[#dfe2f1] mb-3 flex items-center gap-2">
+              {defaultMusicName ? (
+                <>
+                  <Music className="w-4 h-4 text-[#27d9f7] shrink-0" />
+                  <span className="font-medium truncate">{defaultMusicName}</span>
+                </>
+              ) : (
+                <span className="text-[#859397]">{tx('default_music_none')}</span>
+              )}
             </div>
             <div className="flex gap-2">
-              <label className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-[#FFFBF0] cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}>
+              <label
+                className={`flex-1 py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-[#060a14] cursor-pointer bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_14px_rgba(39,217,247,0.3)] hover:shadow-[0_0_20px_rgba(39,217,247,0.45)] active:scale-[0.98] transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
                 {uploading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {defaultMusicName ? tx('default_music_replace') : tx('default_music_upload')}
-                <input type="file" accept="audio/*" className="hidden" disabled={uploading}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }} />
+                <input
+                  type="file" accept="audio/*" className="hidden" disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }}
+                />
               </label>
               {defaultMusicName && (
-                <button onClick={handleDeleteDefault} className="p-2.5 rounded-xl bg-[rgba(224,38,58,0.1)] text-[#E0263A] shrink-0">
+                <button
+                  onClick={handleDeleteDefault}
+                  className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-[0.95] transition-all shrink-0"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
@@ -1086,69 +1189,73 @@ function MusicTab({ topics, tx, flash }: any) {
       </div>
 
       {topics.length === 0 ? (
-        <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_topics')}</div>
-      ) : (
-      <>
-      <select
-        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#1A1310]"
-        style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
-        value={topicId ?? ''}
-        onChange={e => setTopicId(parseInt(e.target.value))}
-      >
-        {topics.map((t: Topic) => (
-          <option key={t.id} value={t.id}>{t.status === 'active' ? '🟢' : '⚪️'} {t.title}</option>
-        ))}
-      </select>
-
-      {loading ? (
-        <div className="flex justify-center py-8"><Loader className="w-6 h-6 text-[#E0263A] animate-spin" /></div>
-      ) : noms.length === 0 ? (
-        <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_nominations')}</div>
-      ) : noms.map((n, i) => (
-        <div key={n.id} className="glass rounded-2xl p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                {i === 0 && n.vote_count > 0 && (
-                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase bg-[rgba(28,63,214,0.15)] text-[#1c3fd6]">🎧 {tx('winner_label')}</span>
-                )}
-                <span className="text-[10px] text-[#6b5f4f]">{n.vote_count} {tx('votes')}</span>
-              </div>
-              <div className="text-sm font-bold text-[#1A1310] truncate">🎵 {n.title}</div>
-              {n.artist && <div className="text-[11px] text-[#6b5f4f]">{n.artist}</div>}
-              <div className="text-[10px] text-[#6b5f4f] mt-0.5">{n.display_name || n.username || '—'}</div>
-            </div>
-            <button onClick={() => setPendingDelete(n.id)} className="p-2 rounded-lg bg-[rgba(224,38,58,0.1)] text-[#E0263A] shrink-0">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+          {tx('no_topics')}
         </div>
-      ))}
+      ) : (
+        <>
+          <select
+            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none text-[#dfe2f1] bg-[#0a0e18] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
+            value={topicId ?? ''}
+            onChange={e => setTopicId(parseInt(e.target.value))}
+          >
+            {topics.map((t: Topic) => (
+              <option key={t.id} value={t.id} className="bg-[#0f131e] text-[#dfe2f1]">
+                {t.status === 'active' ? '🟢' : '⚪️'} {t.title}
+              </option>
+            ))}
+          </select>
 
-      {pendingDelete !== null && (
-        <ConfirmModal
-          tx={tx}
-          message={tx('confirm_delete_nom')}
-          onConfirm={confirmDelete}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
-      </>
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader className="w-6 h-6 text-[#27d9f7] animate-spin" /></div>
+          ) : noms.length === 0 ? (
+            <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+              {tx('no_nominations')}
+            </div>
+          ) : noms.map((n, i) => (
+            <div key={n.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[rgba(39,217,247,0.3)] transition-all">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    {i === 0 && n.vote_count > 0 && (
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-[#27d9f7]/15 border border-[#27d9f7]/30 text-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.3)]">
+                        🎧 {tx('winner_label')}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-mono text-[#859397]">{n.vote_count} {tx('votes')}</span>
+                  </div>
+                  <div className="text-sm font-bold text-[#dfe2f1] truncate">🎵 {n.title}</div>
+                  {n.artist && <div className="text-xs text-[#859397] mt-0.5">{n.artist}</div>}
+                  <div className="text-[10px] text-[#859397] mt-1 font-mono">{n.display_name || n.username || '—'}</div>
+                </div>
+                <button
+                  onClick={() => setPendingDelete(n.id)}
+                  className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-[0.95] transition-all shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {pendingDelete !== null && (
+            <ConfirmModal
+              tx={tx}
+              message={tx('confirm_delete_nom')}
+              onConfirm={confirmDelete}
+              onCancel={() => setPendingDelete(null)}
+            />
+          )}
+        </>
       )}
     </div>
   );
 }
 
-// ── UsersTab (контроль доступа — уровни 1/2/3 + модератор) ────
+// ── UsersTab ───────────────────────────────────────────────
 function UsersTab({ users, tx, isFullAdmin, onSetLevel, onSetRole, onAddPoints, onDeleteUser }: any) {
-  // Moderator huquqi berish/qaytarib olish — bosilishi bilan emas,
-  // avval ConfirmModal orqali (yuqori huquq, tasodifan bosilib qolmasin).
-  // Faqat haqiqiy admin (isFullAdmin) ko'radi/bosa oladi — moderator boshqa
-  // hech kimning darajasi yoki rolini o'zgartira olmaydi.
   const [roleTarget, setRoleTarget] = useState<{ id: number; name: string; role: StaffRole; grant: boolean } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
-  // ID yoki @username bo'yicha qidiruv — 200 nafar foydalanuvchi ro'yxatida
-  // kerakli odamni topish qiyin bo'lgani uchun.
   const [search, setSearch] = useState('');
 
   const filtered = (() => {
@@ -1163,66 +1270,81 @@ function UsersTab({ users, tx, isFullAdmin, onSetLevel, onSetRole, onAddPoints, 
   })();
 
   if (users.length === 0) return (
-    <div className="glass p-8 text-center text-[#6b5f4f] text-sm">{tx('no_users')}</div>
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-8 text-center text-[#859397] text-sm backdrop-blur-xl">
+      {tx('no_users')}
+    </div>
   );
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Легенда уровней доступа */}
-      <div className="glass rounded-2xl p-3.5">
-        <div className="text-[10px] font-bold text-[#E0263A] uppercase tracking-wide mb-1.5">{tx('access_legend_title')}</div>
-        <div className="flex flex-col gap-0.5 text-[11px] text-[#6b5f4f]">
+      {/* Legend Card */}
+      <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-3.5 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+        <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider mb-1.5">{tx('access_legend_title')}</div>
+        <div className="flex flex-col gap-0.5 text-[11px] text-[#859397] leading-relaxed">
           <div>{tx('lvl1_desc')}</div>
           <div>{tx('lvl2_desc')}</div>
           <div>{tx('lvl3_desc')}</div>
         </div>
       </div>
 
-      {/* Qidiruv — ID yoki @username */}
+      {/* Search Input */}
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6b5f4f] pointer-events-none" />
+        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#859397] pointer-events-none" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={tx('search_users_placeholder')}
-          className="w-full rounded-2xl pl-10 pr-9 py-3 text-sm text-[#1A1310] outline-none placeholder:text-[#6b5f4f]"
-          style={{ background: 'rgba(255,251,240,0.8)', border: '1px solid rgba(26,19,16,0.16)' }}
+          className="w-full rounded-2xl pl-10 pr-9 py-3 text-sm text-[#dfe2f1] placeholder:text-[#859397] bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_14px_rgba(39,217,247,0.3)] transition-all"
         />
         {search && (
-          <button onClick={() => setSearch('')} aria-label="Очистить"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b5f4f]">
+          <button
+            onClick={() => setSearch('')} aria-label="Очистить"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#859397] hover:text-[#dfe2f1]"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {filtered.length === 0 && (
-        <div className="glass p-6 text-center text-[#6b5f4f] text-sm">{tx('search_no_results')}</div>
+        <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-6 text-center text-[#859397] text-sm backdrop-blur-xl">
+          {tx('search_no_results')}
+        </div>
       )}
 
       {filtered.map((u: any) => (
-        <div key={u.id} className="glass rounded-2xl p-3.5">
-          <div className="flex items-center justify-between mb-2">
+        <div key={u.id} className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-3.5 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:border-[rgba(39,217,247,0.3)] transition-all">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-[#1A1310] truncate">
-                {u.display_name || u.username || `ID ${u.telegram_id}`}
-                {u.role === 'admin' && <span className="ml-1.5 text-[10px] font-bold text-[#1C3FD6]">👑 {tx('main_admin_badge')}</span>}
-                {u.role === 'moderator' && <span className="ml-1.5 text-[10px] font-bold text-[#38BDF8]">🛡 {tx('moderator_badge')}</span>}
+              <div className="text-sm font-bold text-[#dfe2f1] truncate flex items-center gap-1.5 flex-wrap">
+                <span>{u.display_name || u.username || `ID ${u.telegram_id}`}</span>
+                {u.role === 'admin' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#27d9f7]/15 border border-[#27d9f7]/30 text-[#27d9f7] shadow-[0_0_8px_rgba(39,217,247,0.25)]">
+                    👑 {tx('main_admin_badge')}
+                  </span>
+                )}
+                {u.role === 'moderator' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#059af0]/15 border border-[#059af0]/30 text-[#059af0]">
+                    🛡 {tx('moderator_badge')}
+                  </span>
+                )}
               </div>
-              <div className="text-[10px] text-[#6b5f4f]">
-                <span className="font-semibold text-[#E0263A]">{tx('level_label')} {u.level}</span>
-                {' · '}{Number(u.points).toFixed(3)} pts
+              <div className="text-[11px] text-[#859397] mt-0.5 font-mono">
+                <span className="font-semibold text-[#27d9f7] font-sans">{tx('level_label')} {u.level}</span>
+                {' · '}<span className="text-[#c2f3ff]">{Number(u.points).toFixed(3)} pts</span>
               </div>
             </div>
             <div className="flex gap-1.5 ml-2 shrink-0">
-              <button onClick={() => onAddPoints(u)}
-                className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-[rgba(224,38,58,0.1)] text-[#E0263A]">
+              <button
+                onClick={() => onAddPoints(u)}
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-[rgba(39,217,247,0.12)] border border-[rgba(39,217,247,0.25)] text-[#27d9f7] hover:bg-[rgba(39,217,247,0.2)] hover:shadow-[0_0_10px_rgba(39,217,247,0.25)] active:scale-[0.95] transition-all"
+              >
                 +pts
               </button>
-              {/* Faqat haqiqiy admin userni o'chira oladi, o'zini o'chira olmaydi */}
               {isFullAdmin && u.role !== 'admin' && (
                 <button
                   onClick={() => setDeleteTarget({ id: u.id, name: u.display_name || u.username || `ID ${u.telegram_id}` })}
-                  className="p-1.5 rounded-xl bg-[rgba(224,38,58,0.08)] text-[#E0263A]"
+                  className="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-[0.95] transition-all"
                   title="Удалить пользователя"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -1230,31 +1352,36 @@ function UsersTab({ users, tx, isFullAdmin, onSetLevel, onSetRole, onAddPoints, 
               )}
             </div>
           </div>
-          {/* Level tugmalari — raqamli darajalar (1/2/3). Moderator buni
-              ko'radi, lekin faqat rasm sifatida — bosib bo'lmaydi. */}
-          <div className="flex gap-1.5 mb-1.5">
+
+          {/* Level Toggle Buttons */}
+          <div className="flex gap-1.5 mb-2">
             {[1, 2, 3].map(lvl => isFullAdmin ? (
-              <button key={lvl} onClick={() => onSetLevel(u.id, lvl)}
-                className={`flex-1 py-1.5 rounded-xl text-[12px] font-bold transition-all ${
+              <button
+                key={lvl}
+                onClick={() => onSetLevel(u.id, lvl)}
+                className={`flex-1 py-1.5 rounded-xl text-[12px] font-bold transition-all active:scale-[0.96] ${
                   u.level === lvl
-                    ? 'bg-gradient-to-r from-[#ff4f63] to-[#E0263A] text-[#FFFBF0]'
-                    : 'glass text-[#6b5f4f]'
-                }`}>
+                    ? 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_12px_rgba(39,217,247,0.35)]'
+                    : 'bg-[rgba(21,26,38,0.6)] border border-[rgba(39,217,247,0.12)] text-[#859397] hover:text-[#dfe2f1] hover:border-[rgba(39,217,247,0.25)]'
+                }`}
+              >
                 {tx(`lvl${lvl}`)}
               </button>
             ) : (
-              <div key={lvl} className={`flex-1 py-1.5 rounded-xl text-[12px] font-bold text-center ${
+              <div
+                key={lvl}
+                className={`flex-1 py-1.5 rounded-xl text-[12px] font-bold text-center ${
                   u.level === lvl
-                    ? 'bg-gradient-to-r from-[#ff4f63] to-[#E0263A] text-[#FFFBF0]'
-                    : 'glass text-[#6b5f4f] opacity-50'
-                }`}>
+                    ? 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14]'
+                    : 'bg-[rgba(21,26,38,0.4)] text-[#859397] opacity-50'
+                }`}
+              >
                 {tx(`lvl${lvl}`)}
               </div>
             ))}
           </div>
-          {/* Moderator huquqi — faqat haqiqiy admin bera/qaytarib ola oladi.
-              Yagona role==='admin' (egasi) uchun hech qanday tugma yo'q —
-              hattoki o'zi ham bu yerdan o'z rolini o'zgartira olmaydi. */}
+
+          {/* Moderator Role Toggle */}
           {u.role === 'admin' ? null : isFullAdmin ? (
             <button
               onClick={() => setRoleTarget({
@@ -1263,16 +1390,16 @@ function UsersTab({ users, tx, isFullAdmin, onSetLevel, onSetRole, onAddPoints, 
                 role: u.role === 'moderator' ? 'none' : 'moderator',
                 grant: u.role !== 'moderator',
               })}
-              className={`w-full py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+              className={`w-full py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
                 u.role === 'moderator'
-                  ? 'bg-[rgba(224,38,58,0.1)] text-[#E0263A]'
-                  : 'bg-[rgba(56,189,248,0.12)] text-[#38BDF8]'
+                  ? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25'
+                  : 'bg-[rgba(39,217,247,0.12)] border border-[rgba(39,217,247,0.25)] text-[#27d9f7] hover:bg-[rgba(39,217,247,0.2)]'
               }`}
             >
               {u.role === 'moderator' ? tx('revoke_moderator') : `🛡 ${tx('make_moderator')}`}
             </button>
           ) : u.role === 'moderator' ? (
-            <div className="w-full py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-[rgba(56,189,248,0.08)] text-[#38BDF8] opacity-60">
+            <div className="w-full py-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-[#059af0]/15 border border-[#059af0]/25 text-[#059af0] opacity-75">
               🛡 {tx('moderator_badge')}
             </div>
           ) : null}
@@ -1300,7 +1427,7 @@ function UsersTab({ users, tx, isFullAdmin, onSetLevel, onSetRole, onAddPoints, 
   );
 }
 
-// ── PaymentTab — admin поинт оплатасини қандай ишлашини белгилайди ──
+// ── PaymentTab ─────────────────────────────────────────────
 function PaymentTab({ tx, settings, packages, pricing, flash, onReload }: {
   tx: any; settings: PaymentSettings | null; packages: AdminPackage[]; pricing: Pricing | null;
   flash: (m: string) => void; onReload: () => Promise<void>;
@@ -1318,8 +1445,6 @@ function PaymentTab({ tx, settings, packages, pricing, flash, onReload }: {
     setManualEnabled(settings?.manual_enabled ?? true);
   }, [settings]);
 
-  // Barcha sozlamalar bitta PUT bilan saqlanadi — shuning uchun har
-  // o'zgarishda joriy holatni to'liq yuboramiz (aks holda bo'shlar o'chib ketadi).
   async function saveSettings(over: Partial<{ method: PayMethod; manualEnabled: boolean }> = {}) {
     setSaving(true);
     try {
@@ -1344,85 +1469,81 @@ function PaymentTab({ tx, settings, packages, pricing, flash, onReload }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="glass rounded-2xl p-4">
-        <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide mb-3">{tx('payment_method_title')}</div>
+      {/* Settings Card */}
+      <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+        <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider mb-3">
+          {tx('payment_method_title')}
+        </div>
         <div className="flex flex-col gap-2">
           {methodOptions.map((o) => (
             <button
               key={o.key}
               onClick={() => { setMethod(o.key); saveSettings({ method: o.key }); }}
-              className="text-left rounded-xl p-3 border transition-all"
-              style={method === o.key
-                ? { borderColor: '#E0263A', background: 'rgba(224,38,58,0.1)' }
-                : { borderColor: 'rgba(224,38,58,0.14)' }}
+              className={`text-left rounded-xl p-3 border transition-all active:scale-[0.99] ${
+                method === o.key
+                  ? 'border-[#27d9f7] bg-[rgba(39,217,247,0.12)] shadow-[0_0_12px_rgba(39,217,247,0.25)]'
+                  : 'border-[rgba(39,217,247,0.14)] bg-[rgba(21,26,38,0.5)] hover:border-[rgba(39,217,247,0.3)]'
+              }`}
             >
-              <div className="text-sm font-bold text-[#1A1310]">{o.title}</div>
-              <div className="text-[11px] text-[#6b5f4f] mt-0.5">{o.desc}</div>
+              <div className="text-sm font-bold text-[#dfe2f1]">{o.title}</div>
+              <div className="text-[11px] text-[#859397] mt-0.5">{o.desc}</div>
             </button>
           ))}
         </div>
 
         {manualVisible && (
           <div className="mt-3 flex flex-col gap-3">
-            {/* Qo'lda to'lov arizalarini qabul qilish yoqilgan/o'chirilgan */}
-            <label className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 cursor-pointer"
-              style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}>
-              <span className="text-xs font-semibold text-[#1A1310]">{tx('manual_enabled_label')}</span>
+            <label className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 cursor-pointer bg-[rgba(10,14,24,0.6)] border border-[rgba(39,217,247,0.2)]">
+              <span className="text-xs font-semibold text-[#dfe2f1]">{tx('manual_enabled_label')}</span>
               <input
                 type="checkbox"
                 checked={manualEnabled}
                 onChange={(e) => { setManualEnabled(e.target.checked); saveSettings({ manualEnabled: e.target.checked }); }}
-                className="w-4 h-4 accent-[#E0263A]"
+                className="w-4 h-4 accent-[#27d9f7]"
               />
             </label>
 
             <div>
-              <label className="text-[10px] text-[#6b5f4f] uppercase tracking-wide">{tx('manual_details_label')}</label>
+              <label className="text-[10px] text-[#859397] uppercase tracking-wide font-['Sora']">{tx('manual_details_label')}</label>
               <textarea
                 value={manualDetails}
                 onChange={(e) => setManualDetails(e.target.value)}
                 placeholder={tx('manual_details_placeholder')}
                 rows={4}
-                className="w-full mt-1.5 rounded-xl px-3 py-2.5 text-sm text-[#1A1310] outline-none resize-none"
-                style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none resize-none bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.25)] transition-all"
               />
             </div>
 
             <div>
-              <label className="text-[10px] text-[#6b5f4f] uppercase tracking-wide">{tx('payment_instructions_label')}</label>
+              <label className="text-[10px] text-[#859397] uppercase tracking-wide font-['Sora']">{tx('payment_instructions_label')}</label>
               <textarea
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder={tx('payment_instructions_placeholder')}
                 rows={3}
-                className="w-full mt-1.5 rounded-xl px-3 py-2.5 text-sm text-[#1A1310] outline-none resize-none"
-                style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+                className="w-full mt-1.5 rounded-xl px-3.5 py-2.5 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none resize-none bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.25)] transition-all"
               />
             </div>
 
             <button
               onClick={() => saveSettings()}
               disabled={saving}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-[#FFFBF0] disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_14px_rgba(39,217,247,0.3)] hover:shadow-[0_0_20px_rgba(39,217,247,0.45)] active:scale-[0.98] disabled:opacity-50 transition-all"
             >
-              {saving ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto" /> : tx('save')}
+              {saving ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto text-[#060a14]" /> : tx('save')}
             </button>
           </div>
         )}
       </div>
 
       <ManualPaymentsPanel tx={tx} flash={flash} />
-
       <PackagesEditor tx={tx} packages={packages} flash={flash} onReload={onReload} />
-
       <PricingEditor tx={tx} pricing={pricing} flash={flash} onReload={onReload} />
     </div>
   );
 }
 
-// ── ManualPaymentsPanel — qo'lda to'lov arizalarini tasdiqlash/rad etish ──
-// Tasdiqlansa backend point'ni AVTOMATIK qo'shadi va userga DM yuboradi.
+// ── ManualPaymentsPanel ────────────────────────────────────
 function ManualPaymentsPanel({ tx, flash }: { tx: any; flash: (m: string) => void }) {
   type Filter = 'pending' | 'approved' | 'rejected' | 'all';
   const [filter, setFilter] = useState<Filter>('pending');
@@ -1463,89 +1584,97 @@ function ManualPaymentsPanel({ tx, flash }: { tx: any; flash: (m: string) => voi
   const pendingCount = filter === 'pending' ? items.length : 0;
 
   return (
-    <div className="glass rounded-2xl p-4">
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide">
-          {tx('manual_requests_title')}
+        <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider flex items-center gap-2">
+          <span>{tx('manual_requests_title')}</span>
           {pendingCount > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] text-[#FFFBF0]" style={{ background: '#E0263A' }}>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold text-[#060a14] bg-[#27d9f7] shadow-[0_0_8px_rgba(39,217,247,0.6)]">
               {pendingCount}
             </span>
           )}
         </div>
-        <button onClick={() => load(filter)} className="p-1.5 rounded-lg bg-[rgba(224,38,58,0.1)] text-[#E0263A]">
+        <button
+          onClick={() => load(filter)}
+          className="p-1.5 rounded-xl bg-[rgba(39,217,247,0.1)] border border-[rgba(39,217,247,0.2)] text-[#27d9f7] hover:bg-[rgba(39,217,247,0.2)] active:scale-[0.95] transition-all"
+        >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
       <div className="flex gap-1.5 mb-3 flex-wrap">
         {filters.map((f) => (
-          <button key={f.key}
+          <button
+            key={f.key}
             onClick={() => setFilter(f.key)}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all"
-            style={filter === f.key
-              ? { borderColor: '#E0263A', background: 'rgba(224,38,58,0.12)', color: '#E0263A' }
-              : { borderColor: 'rgba(224,38,58,0.14)', color: '#6b5f4f' }}>
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all active:scale-[0.96] ${
+              filter === f.key
+                ? 'border-[#27d9f7] bg-[rgba(39,217,247,0.15)] text-[#c2f3ff] shadow-[0_0_10px_rgba(39,217,247,0.25)]'
+                : 'border-[rgba(39,217,247,0.12)] text-[#859397] hover:text-[#dfe2f1] bg-[rgba(21,26,38,0.5)]'
+            }`}
+          >
             {f.label}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="py-6 text-center"><Loader className="w-4 h-4 animate-spin mx-auto text-[#E0263A]" /></div>
+        <div className="py-6 text-center"><Loader className="w-4 h-4 animate-spin mx-auto text-[#27d9f7]" /></div>
       ) : items.length === 0 ? (
-        <div className="py-6 text-center text-xs text-[#6b5f4f]">{tx('manual_no_requests')}</div>
+        <div className="py-6 text-center text-xs text-[#859397]">{tx('manual_no_requests')}</div>
       ) : (
         <div className="flex flex-col gap-2">
           {items.map((p) => {
             const isPending = p.status === 'pending';
             return (
-              <div key={p.id} className="rounded-xl p-3"
-                style={{ background: 'rgba(255,251,240,0.5)', border: '1px solid rgba(224,38,58,0.14)' }}>
+              <div
+                key={p.id}
+                className="rounded-2xl p-3.5 bg-[rgba(10,14,24,0.65)] border border-[rgba(39,217,247,0.18)] hover:border-[rgba(39,217,247,0.3)] transition-all"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-sm font-bold text-[#1A1310] truncate">
+                    <div className="text-sm font-bold text-[#dfe2f1] truncate">
                       {p.display_name || p.username || `ID ${p.telegram_id}`}
                     </div>
-                    <div className="text-[11px] text-[#6b5f4f] font-mono">
+                    <div className="text-[11px] text-[#859397] font-mono">
                       {p.telegram_id}{p.username ? ` · @${p.username}` : ''}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-bold text-[#E0263A]">€{Number(p.price_eur).toFixed(2)}</div>
-                    <div className="text-[11px] text-[#6b5f4f] font-mono">{Number(p.points_amount).toFixed(0)} pts</div>
+                    <div className="text-sm font-bold text-[#27d9f7]">€{Number(p.price_eur).toFixed(2)}</div>
+                    <div className="text-[11px] font-mono text-[#c2f3ff]">{Number(p.points_amount).toFixed(0)} pts</div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                  <span className="px-2 py-0.5 rounded-md text-[#1A1310]" style={{ background: 'rgba(26,19,16,0.08)' }}>
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-[rgba(21,26,38,0.7)] border border-[rgba(255,255,255,0.08)] text-[#dfe2f1]">
                     {p.package_label}
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[#1A1310]" style={{ background: 'rgba(26,19,16,0.08)' }}>
+                  <span className="px-2 py-0.5 rounded-lg bg-[rgba(21,26,38,0.7)] border border-[rgba(255,255,255,0.08)] text-[#dfe2f1]">
                     {tx(`mm_${p.payment_method}`)}
                   </span>
-                  <span className="px-2 py-0.5 rounded-md font-semibold"
-                    style={isPending
-                      ? { background: 'rgba(255,193,7,0.18)', color: '#8a6d00' }
+                  <span className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] ${
+                    isPending
+                      ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.2)]'
                       : p.status === 'approved'
-                      ? { background: 'rgba(28,63,214,0.12)', color: '#1C3FD6' }
-                      : { background: 'rgba(224,38,58,0.12)', color: '#E0263A' }}>
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                      : 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
+                  }`}>
                     {tx(`manual_filter_${p.status === 'pending' ? 'pending' : p.status === 'approved' ? 'approved' : 'rejected'}`)}
                   </span>
-                  <span className="text-[#6b5f4f]">{new Date(p.created_at).toLocaleString('ru-RU', {
+                  <span className="text-[#859397] font-mono text-[10px]">{new Date(p.created_at).toLocaleString('ru-RU', {
                     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
                   })}</span>
                 </div>
 
                 {p.payment_note && (
-                  <div className="mt-2 text-[11px] text-[#1A1310] whitespace-pre-line rounded-lg px-2.5 py-2"
-                    style={{ background: 'rgba(26,19,16,0.05)' }}>
-                    <span className="text-[#6b5f4f]">{tx('manual_user_note')}: </span>{p.payment_note}
+                  <div className="mt-2 text-xs text-[#dfe2f1] whitespace-pre-line rounded-xl px-3 py-2 bg-[rgba(21,26,38,0.7)] border border-[rgba(39,217,247,0.1)] leading-relaxed">
+                    <span className="text-[#859397] font-semibold">{tx('manual_user_note')}: </span>{p.payment_note}
                   </div>
                 )}
 
                 {!isPending && p.admin_note && (
-                  <div className="mt-1.5 text-[11px] text-[#6b5f4f] whitespace-pre-line">💬 {p.admin_note}</div>
+                  <div className="mt-1.5 text-xs text-[#859397] whitespace-pre-line">💬 {p.admin_note}</div>
                 )}
 
                 {isPending && (
@@ -1554,22 +1683,21 @@ function ManualPaymentsPanel({ tx, flash }: { tx: any; flash: (m: string) => voi
                       value={notes[p.id] || ''}
                       onChange={(e) => setNotes((n) => ({ ...n, [p.id]: e.target.value }))}
                       placeholder={tx('manual_note_ph')}
-                      className="w-full mt-2 rounded-lg px-2.5 py-2 text-xs text-[#1A1310] outline-none"
-                      style={{ background: 'rgba(255,251,240,0.8)', border: '1px solid rgba(224,38,58,0.18)' }}
+                      className="w-full mt-2.5 rounded-xl px-3 py-2 text-xs text-[#dfe2f1] bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.2)] placeholder:text-[#859397] outline-none focus:border-[#27d9f7] transition-all"
                     />
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2.5">
                       <button
                         onClick={() => setConfirmAction({ id: p.id, approve: true })}
                         disabled={busyId === p.id}
-                        className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50"
-                        style={{ background: 'rgba(28,63,214,0.15)', color: '#1C3FD6' }}>
+                        className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 hover:shadow-[0_0_10px_rgba(16,185,129,0.3)] active:scale-[0.98] disabled:opacity-50 transition-all"
+                      >
                         <Check className="w-3.5 h-3.5" /> {tx('manual_approve')}
                       </button>
                       <button
                         onClick={() => setConfirmAction({ id: p.id, approve: false })}
                         disabled={busyId === p.id}
-                        className="flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50"
-                        style={{ background: 'rgba(224,38,58,0.12)', color: '#E0263A' }}>
+                        className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-[0.98] disabled:opacity-50 transition-all"
+                      >
                         <X className="w-3.5 h-3.5" /> {tx('manual_reject')}
                       </button>
                     </div>
@@ -1593,7 +1721,7 @@ function ManualPaymentsPanel({ tx, flash }: { tx: any; flash: (m: string) => voi
   );
 }
 
-// ── PackagesEditor — point пакетларини CRUD қилиш (нарх/миқдор/фаоллик) ──
+// ── PackagesEditor ─────────────────────────────────────────
 function PackagesEditor({ tx, packages, flash, onReload }: {
   tx: any; packages: AdminPackage[]; flash: (m: string) => void; onReload: () => Promise<void>;
 }) {
@@ -1636,22 +1764,24 @@ function PackagesEditor({ tx, packages, flash, onReload }: {
   }
 
   return (
-    <div className="glass rounded-2xl p-4">
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide">{tx('packages_title')}</div>
-        <button onClick={() => setShowAdd((s) => !s)} className="p-1.5 rounded-lg bg-[rgba(224,38,58,0.1)] text-[#E0263A]">
+        <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider">{tx('packages_title')}</div>
+        <button
+          onClick={() => setShowAdd((s) => !s)}
+          className="p-1.5 rounded-xl bg-[rgba(39,217,247,0.1)] border border-[rgba(39,217,247,0.2)] text-[#27d9f7] hover:bg-[rgba(39,217,247,0.2)] active:scale-[0.95] transition-all"
+        >
           <Plus className="w-4 h-4" />
         </button>
       </div>
 
       {showAdd && (
-        <div className="flex flex-col gap-2 mb-3 p-3 rounded-xl" style={{ background: 'rgba(255,251,240,0.5)', border: '1px solid rgba(224,38,58,0.14)' }}>
+        <div className="flex flex-col gap-2.5 mb-3 p-3.5 rounded-2xl bg-[rgba(10,14,24,0.65)] border border-[rgba(39,217,247,0.2)]">
           <input
             placeholder={tx('package_label')}
             value={form.label}
             onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-            className="rounded-lg px-3 py-2 text-sm text-[#1A1310] outline-none"
-            style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+            className="rounded-xl px-3 py-2 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.2)] focus:border-[#27d9f7]"
           />
           <div className="flex gap-2">
             <input
@@ -1659,54 +1789,64 @@ function PackagesEditor({ tx, packages, flash, onReload }: {
               value={form.points_amount}
               inputMode="decimal"
               onChange={(e) => setForm((f) => ({ ...f, points_amount: e.target.value }))}
-              className="flex-1 rounded-lg px-3 py-2 text-sm text-[#1A1310] outline-none"
-              style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+              className="flex-1 rounded-xl px-3 py-2 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.2)] focus:border-[#27d9f7]"
             />
             <input
               placeholder={tx('package_price')}
               value={form.price_eur}
               inputMode="decimal"
               onChange={(e) => setForm((f) => ({ ...f, price_eur: e.target.value }))}
-              className="flex-1 rounded-lg px-3 py-2 text-sm text-[#1A1310] outline-none"
-              style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+              className="flex-1 rounded-xl px-3 py-2 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.2)] focus:border-[#27d9f7]"
             />
             <input
               placeholder={tx('package_price_stars')}
               value={form.price_stars}
               inputMode="numeric"
               onChange={(e) => setForm((f) => ({ ...f, price_stars: e.target.value }))}
-              className="flex-1 rounded-lg px-3 py-2 text-sm text-[#1A1310] outline-none"
-              style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+              className="flex-1 rounded-xl px-3 py-2 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.2)] focus:border-[#27d9f7]"
             />
           </div>
           <button
             onClick={handleAdd}
             disabled={creating}
-            className="py-2 rounded-lg text-xs font-bold text-[#FFFBF0] disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}
+            className="py-2.5 rounded-xl text-xs font-bold text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_14px_rgba(39,217,247,0.3)] hover:shadow-[0_0_20px_rgba(39,217,247,0.45)] active:scale-[0.98] disabled:opacity-50 transition-all"
           >
-            {creating ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto" /> : tx('package_add')}
+            {creating ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto text-[#060a14]" /> : tx('package_add')}
           </button>
         </div>
       )}
 
       {packages.length === 0 ? (
-        <div className="text-center text-xs text-[#6b5f4f] py-4">{tx('no_packages')}</div>
+        <div className="text-center text-xs text-[#859397] py-4">{tx('no_packages')}</div>
       ) : (
         <div className="flex flex-col gap-2">
           {packages.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(255,251,240,0.4)', border: '1px solid rgba(224,38,58,0.1)' }}>
+            <div
+              key={p.id}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-[rgba(10,14,24,0.6)] border border-[rgba(39,217,247,0.14)] hover:border-[rgba(39,217,247,0.25)] transition-all"
+            >
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-semibold truncate ${p.is_active ? 'text-[#1A1310]' : 'text-[#6b5f4f] line-through'}`}>{p.label}</div>
-                <div className="text-[11px] text-[#6b5f4f]">{Number(p.points_amount).toFixed(0)} pts · €{Number(p.price_eur).toFixed(2)} · ⭐{p.price_stars}</div>
+                <div className={`text-sm font-semibold truncate ${p.is_active ? 'text-[#dfe2f1]' : 'text-[#859397] line-through'}`}>
+                  {p.label}
+                </div>
+                <div className="text-[11px] text-[#859397] font-mono">
+                  <span className="text-[#c2f3ff]">{Number(p.points_amount).toFixed(0)} pts</span> · €{Number(p.price_eur).toFixed(2)} · ⭐{p.price_stars}
+                </div>
               </div>
               <button
                 onClick={() => toggleActive(p)}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 ${p.is_active ? 'bg-[rgba(28,63,214,0.15)] text-[#1c3fd6]' : 'bg-[rgba(138,143,152,0.15)] text-[#6b5f4f]'}`}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 transition-all ${
+                  p.is_active
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                    : 'bg-slate-500/15 border border-slate-500/25 text-[#859397]'
+                }`}
               >
                 {tx('package_active')}
               </button>
-              <button onClick={() => setPendingDelete(p.id)} className="p-1.5 rounded-lg bg-[rgba(224,38,58,0.1)] text-[#E0263A] shrink-0">
+              <button
+                onClick={() => setPendingDelete(p.id)}
+                className="p-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 active:scale-[0.95] transition-all shrink-0"
+              >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1726,9 +1866,7 @@ function PackagesEditor({ tx, packages, flash, onReload }: {
   );
 }
 
-// ── PricingEditor — xizmatlar narxi (matn/ovoz xabar, efir soati).
-// FAQAT haqiqiy admin ko'radi (PaymentTab shu tarzda ekaniga ishonch hosil
-// qilingan) — "сколько поинтов будет сниматься... это решает только админ".
+// ── PricingEditor ──────────────────────────────────────────
 function PricingEditor({ tx, pricing, flash, onReload }: {
   tx: any; pricing: Pricing | null; flash: (m: string) => void; onReload: () => Promise<void>;
 }) {
@@ -1756,9 +1894,9 @@ function PricingEditor({ tx, pricing, flash, onReload }: {
   }
 
   return (
-    <div className="glass rounded-2xl p-4">
-      <div className="text-[11px] font-bold text-[#E0263A] uppercase tracking-wide mb-1">{tx('pricing_title')}</div>
-      <div className="text-[11px] text-[#6b5f4f] mb-3">{tx('pricing_hint')}</div>
+    <div className="bg-[rgba(15,19,30,0.65)] border border-[rgba(39,217,247,0.18)] rounded-2xl p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+      <div className="text-[10px] font-bold text-[#27d9f7] font-['Sora'] uppercase tracking-wider mb-1">{tx('pricing_title')}</div>
+      <div className="text-[11px] text-[#859397] mb-3 leading-relaxed">{tx('pricing_hint')}</div>
       <div className="flex flex-col gap-2.5">
         {([
           ['text', text, setText, tx('pricing_text')],
@@ -1766,13 +1904,12 @@ function PricingEditor({ tx, pricing, flash, onReload }: {
           ['slot', slot, setSlot, tx('pricing_slot')],
         ] as const).map(([key, value, setValue, label]) => (
           <div key={key} className="flex items-center gap-3">
-            <label className="flex-1 text-sm text-[#1A1310]">{label}</label>
+            <label className="flex-1 text-sm text-[#dfe2f1]">{label}</label>
             <input
               inputMode="decimal"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="w-24 rounded-lg px-3 py-2 text-sm text-right text-[#1A1310] outline-none"
-              style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(224,38,58,0.18)' }}
+              className="w-24 rounded-xl px-3 py-2 text-sm text-right text-[#dfe2f1] font-mono outline-none bg-[rgba(10,14,24,0.8)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7]"
             />
           </div>
         ))}
@@ -1780,19 +1917,15 @@ function PricingEditor({ tx, pricing, flash, onReload }: {
       <button
         onClick={save}
         disabled={saving}
-        className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold text-[#FFFBF0] disabled:opacity-50"
-        style={{ background: 'linear-gradient(135deg, #ff4f63, #E0263A)' }}
+        className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold text-[#060a14] bg-gradient-to-r from-[#27d9f7] to-[#059af0] shadow-[0_0_14px_rgba(39,217,247,0.3)] hover:shadow-[0_0_20px_rgba(39,217,247,0.45)] active:scale-[0.98] disabled:opacity-50 transition-all"
       >
-        {saving ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto" /> : tx('save')}
+        {saving ? <Loader className="w-3.5 h-3.5 animate-spin mx-auto text-[#060a14]" /> : tx('save')}
       </button>
     </div>
   );
 }
 
-// ── AddPointsModal — админ хоҳлаган пользовательга, хоҳлаган пайтда,
-// хоҳлаган миқдорда поинт бера олади. window.prompt() Telegram Mini App
-// WebView'da ishonchli ishlamasligi mumkin edi (ba'zi klientlarda umuman
-// ko'rinmaydi) — shu sabab oddiy in-app modal orqali qilinadi.
+// ── AddPointsModal ─────────────────────────────────────────
 function AddPointsModal({ user, tx, onClose, onSubmit }: {
   user: { id: number; display_name: string | null; username: string | null; telegram_id: number };
   tx: any; onClose: () => void; onSubmit: (amount: number) => Promise<void>;
@@ -1802,8 +1935,6 @@ function AddPointsModal({ user, tx, onClose, onSubmit }: {
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    // Maydon doim musbat — yo'nalish yuqoridagi Начислить/Списать tugmasi
-    // orqali tanlanadi, minus belgisi terish shart emas.
     const a = Math.abs(parseFloat(amount));
     if (!a) return;
     setBusy(true);
@@ -1811,44 +1942,44 @@ function AddPointsModal({ user, tx, onClose, onSubmit }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[400] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-[360px] glass rounded-3xl p-5 bg-[#FFFFFF]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[400] bg-[#060a14]/85 backdrop-blur-md flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-[360px] rounded-3xl p-5 bg-[rgba(15,19,30,0.95)] border border-[rgba(39,217,247,0.25)] shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-[#dfe2f1]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h3 className="text-base font-bold text-[#E0263A]">{tx('add_pts_title')}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(255,255,255,0.06)] text-[#6b5f4f] active:scale-90 transition-transform">
+          <h3 className="text-base font-bold text-[#27d9f7] font-['Sora']">{tx('add_pts_title')}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] text-[#859397] hover:text-[#dfe2f1] active:scale-90 transition-all">
             <X size={16} />
           </button>
         </div>
 
-        <div className="text-xs text-[#6b5f4f] mb-1">{tx('add_pts_to')}</div>
-        <div className="text-sm font-semibold text-[#1A1310] mb-4">
+        <div className="text-xs text-[#859397] mb-1">{tx('add_pts_to')}</div>
+        <div className="text-sm font-semibold text-[#dfe2f1] mb-4">
           {user.display_name || user.username || `ID ${user.telegram_id}`}
         </div>
 
-        {/* Yo'nalish tanlash — Начислить (admin balansiga tegmasdan qo'shadi)
-            yoki Списать (foydalanuvchidan yechadi, 0 dan pastga tushmaydi) */}
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setMode('add')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              mode === 'add' ? 'text-[#FFFBF0]' : 'glass text-[#6b5f4f]'
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${
+              mode === 'add'
+                ? 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_12px_rgba(39,217,247,0.35)]'
+                : 'bg-[rgba(21,26,38,0.6)] border border-[rgba(39,217,247,0.12)] text-[#859397]'
             }`}
-            style={mode === 'add' ? { background: 'linear-gradient(135deg, #ff4f63, #E0263A)' } : undefined}
           >
             {tx('mode_add')}
           </button>
           <button
             onClick={() => setMode('deduct')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              mode === 'deduct' ? 'text-white' : 'glass text-[#6b5f4f]'
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${
+              mode === 'deduct'
+                ? 'bg-rose-500/20 border border-rose-500/40 text-rose-300 shadow-[0_0_12px_rgba(239,68,68,0.25)]'
+                : 'bg-[rgba(21,26,38,0.6)] border border-[rgba(39,217,247,0.12)] text-[#859397]'
             }`}
-            style={mode === 'deduct' ? { background: 'linear-gradient(135deg, #E0263A, #E0263A)' } : undefined}
           >
             {tx('mode_deduct')}
           </button>
         </div>
 
-        <label className="text-xs text-[#6b5f4f]">{tx('amount')}</label>
+        <label className="text-xs text-[#859397]">{tx('amount')}</label>
         <input
           autoFocus
           value={amount}
@@ -1856,20 +1987,18 @@ function AddPointsModal({ user, tx, onClose, onSubmit }: {
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           inputMode="decimal"
           placeholder="0"
-          className="w-full bg-[rgba(255,251,240,0.7)] border border-[rgba(224,38,58,0.18)] rounded-xl px-4 py-3 text-sm text-[#1A1310] outline-none focus:border-[#E0263A] mb-1.5"
+          className="w-full bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] rounded-xl px-4 py-3 text-sm text-[#dfe2f1] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.3)] mb-1.5 transition-all"
         />
-        <div className="text-[10px] text-[#6b5f4f] mb-4">{tx('add_pts_hint')}</div>
+        <div className="text-[10px] text-[#859397] mb-4 leading-relaxed">{tx('add_pts_hint')}</div>
 
         <button
           onClick={submit}
           disabled={busy || !amount}
-          className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-40"
-          style={{
-            background: mode === 'deduct'
-              ? 'linear-gradient(135deg, #E0263A, #E0263A)'
-              : 'linear-gradient(135deg, #ff4f63, #E0263A)',
-            color: mode === 'deduct' ? '#fff' : '#FFFBF0',
-          }}
+          className={`w-full py-3 rounded-xl font-bold text-sm disabled:opacity-40 transition-all active:scale-[0.98] ${
+            mode === 'deduct'
+              ? 'bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 shadow-[0_0_14px_rgba(239,68,68,0.3)]'
+              : 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_16px_rgba(39,217,247,0.35)] hover:shadow-[0_0_22px_rgba(39,217,247,0.5)]'
+          }`}
         >
           {busy ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : mode === 'deduct' ? tx('deduct_pts_submit') : tx('add_pts_submit')}
         </button>
@@ -1878,10 +2007,7 @@ function AddPointsModal({ user, tx, onClose, onSubmit }: {
   );
 }
 
-// ── GrantAccessModal — header'dagi tez tugma: qidirish → tanlash →
-// "Выбрать" → tasdiqlash (ConfirmModal). TO'LIQ admin huquqini beradi/
-// qaytarib oladi (moderator emas — moderator uchun Доступ tabidagi tugma
-// bor allaqachon). Faqat isFullAdmin ko'radi, backend ham require_admin.
+// ── GrantAccessModal ───────────────────────────────────────
 function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
   tx: any; meId?: number; onClose: () => void; flash: (m: string) => void; onGranted: () => void;
 }) {
@@ -1896,10 +2022,6 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
     getUsers().then(setUsers).catch(() => setUsers([])).finally(() => setLoading(false));
   }, []);
 
-  // O'zini ro'yxatda ko'rsatmaymiz — o'z rolini o'zgartira olmaydi
-  // (backend ham shunday bloklaydi). Qolgan hamma ko'rinadi — istalgan
-  // kishiga to'liq admin berish yoki (agar u allaqachon admin bo'lsa)
-  // qaytarib olish mumkin.
   const candidates = users.filter((u: any) => u.id !== meId);
   const filtered = (() => {
     const q = search.trim().toLowerCase().replace(/^@/, '');
@@ -1912,8 +2034,6 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
     );
   })();
 
-  // Kim tanlansa — o'sha kishining joriy roliga qarab harakat o'zi
-  // aniqlanadi: admin emas → to'liq admin qilamiz, admin → qaytarib olamiz.
   const willRevoke = selected?.role === 'admin';
 
   async function handleConfirm() {
@@ -1933,32 +2053,31 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[400] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-[400px] max-h-[80vh] flex flex-col glass rounded-3xl p-5 bg-[#FFFFFF]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[400] bg-[#060a14]/85 backdrop-blur-md flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-[400px] max-h-[80vh] flex flex-col rounded-3xl p-5 bg-[rgba(15,19,30,0.95)] border border-[rgba(39,217,247,0.25)] shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-[#dfe2f1]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1 shrink-0">
-          <h3 className="text-base font-bold text-[#E0263A]">{tx('grant_access_title')}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(255,255,255,0.06)] text-[#6b5f4f]">
+          <h3 className="text-base font-bold text-[#27d9f7] font-['Sora']">{tx('grant_access_title')}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] text-[#859397] hover:text-[#dfe2f1]">
             <X size={16} />
           </button>
         </div>
-        <p className="text-[11px] text-[#6b5f4f] mb-3 shrink-0">{tx('grant_access_hint')}</p>
+        <p className="text-[11px] text-[#859397] mb-3 leading-relaxed shrink-0">{tx('grant_access_hint')}</p>
 
         <div className="relative mb-3 shrink-0">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6b5f4f] pointer-events-none" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#859397] pointer-events-none" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={tx('search_users_placeholder')}
-            className="w-full rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1A1310] outline-none placeholder:text-[#6b5f4f]"
-            style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(26,19,16,0.16)' }}
+            className="w-full rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#dfe2f1] placeholder:text-[#859397] outline-none bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] focus:border-[#27d9f7] transition-all"
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+        <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-0.5">
           {loading ? (
-            <div className="text-center text-xs text-[#6b5f4f] py-6">…</div>
+            <div className="text-center text-xs text-[#859397] py-6">…</div>
           ) : filtered.length === 0 ? (
-            <div className="text-center text-xs text-[#6b5f4f] py-6">
+            <div className="text-center text-xs text-[#859397] py-6">
               {candidates.length === 0 ? tx('no_candidates') : tx('search_no_results')}
             </div>
           ) : filtered.map((u: any) => {
@@ -1967,23 +2086,23 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
               <button
                 key={u.id}
                 onClick={() => setSelected(u)}
-                className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-all"
-                style={{
-                  background: isSelected ? 'rgba(224,38,58,0.12)' : 'rgba(255,251,240,0.5)',
-                  border: isSelected ? '1px solid rgba(224,38,58,0.4)' : '1px solid transparent',
-                }}
+                className={`flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-left transition-all ${
+                  isSelected
+                    ? 'bg-[rgba(39,217,247,0.12)] border border-[rgba(39,217,247,0.35)] shadow-[0_0_10px_rgba(39,217,247,0.2)]'
+                    : 'bg-[rgba(10,14,24,0.5)] border border-[rgba(255,255,255,0.06)] hover:border-[rgba(39,217,247,0.2)]'
+                }`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-[#1A1310] truncate">
+                  <div className="text-sm font-semibold text-[#dfe2f1] truncate">
                     {u.display_name || u.username || `ID ${u.telegram_id}`}
                   </div>
-                  <div className="text-[10px] text-[#6b5f4f]">
-                    {tx('level_label')} {u.level}
-                    {u.role === 'admin' && <span className="ml-1.5 text-[#1C3FD6]">👑 {tx('main_admin_badge')}</span>}
-                    {u.role === 'moderator' && <span className="ml-1.5 text-[#38BDF8]">🛡 {tx('moderator_badge')}</span>}
+                  <div className="text-[10px] text-[#859397] font-mono">
+                    <span className="font-sans text-[#27d9f7]">{tx('level_label')} {u.level}</span>
+                    {u.role === 'admin' && <span className="ml-1.5 text-[#27d9f7] font-bold">👑 {tx('main_admin_badge')}</span>}
+                    {u.role === 'moderator' && <span className="ml-1.5 text-[#059af0] font-bold">🛡 {tx('moderator_badge')}</span>}
                   </div>
                 </div>
-                {isSelected && <CheckCircle className="w-4 h-4 text-[#E0263A] shrink-0" />}
+                {isSelected && <CheckCircle className="w-4 h-4 text-[#27d9f7] shrink-0" />}
               </button>
             );
           })}
@@ -1992,10 +2111,11 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
         <button
           onClick={() => selected && setConfirming(true)}
           disabled={!selected}
-          className="w-full mt-3 py-3 rounded-xl font-bold text-sm disabled:opacity-40 shrink-0"
-          style={willRevoke
-            ? { background: 'rgba(224,38,58,0.15)', color: '#E0263A' }
-            : { background: 'linear-gradient(135deg, #ff4f63, #E0263A)', color: '#FFFBF0' }}
+          className={`w-full mt-3 py-3 rounded-xl font-bold text-sm disabled:opacity-40 shrink-0 transition-all active:scale-[0.98] ${
+            willRevoke
+              ? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25'
+              : 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_16px_rgba(39,217,247,0.35)] hover:shadow-[0_0_24px_rgba(39,217,247,0.5)]'
+          }`}
         >
           {selected ? (willRevoke ? tx('revoke_full_admin') : tx('make_full_admin')) : tx('grant_access_pick')}
         </button>
@@ -2013,24 +2133,25 @@ function GrantAccessModal({ tx, meId, onClose, flash, onGranted }: {
   );
 }
 
-// ── ConfirmModal — window.confirm() o'rniga (bir xil sababdan: Telegram
-// Mini App'da native dialoglar ishonchsiz) ──
+// ── ConfirmModal ───────────────────────────────────────────
 function ConfirmModal({ tx, message, onConfirm, onCancel }: {
   tx: any; message: string; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[400] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="w-full max-w-[340px] glass rounded-3xl p-5 bg-[#FFFFFF]" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-bold text-[#1A1310] mb-2">{tx('confirm_delete_title')}</h3>
-        <p className="text-sm text-[#6b5f4f] mb-5">{message}</p>
+    <div className="fixed inset-0 z-[400] bg-[#060a14]/85 backdrop-blur-md flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="w-full max-w-[340px] rounded-3xl p-5 bg-[rgba(15,19,30,0.95)] border border-[rgba(39,217,247,0.25)] shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl text-[#dfe2f1]" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-[#dfe2f1] font-['Sora'] mb-2">{tx('confirm_delete_title')}</h3>
+        <p className="text-sm text-[#859397] mb-5 leading-relaxed">{message}</p>
         <div className="flex gap-2.5">
-          <button onClick={onCancel} className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#6b5f4f] glass">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#859397] bg-[rgba(21,26,38,0.7)] border border-[rgba(255,255,255,0.08)] hover:text-[#dfe2f1] hover:border-[rgba(39,217,247,0.2)] active:scale-[0.98] transition-all"
+          >
             {tx('cancel')}
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #E0263A, #E0263A)' }}
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-rose-500 to-red-600 shadow-[0_0_14px_rgba(239,68,68,0.4)] active:scale-[0.98] transition-all"
           >
             {tx('confirm')}
           </button>

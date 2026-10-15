@@ -38,32 +38,45 @@ export function Chat({
   };
 
   return (
-    <div className="rift-zone-u2 bg-[var(--bg)] p-3 flex flex-col flex-1 min-h-0">
-      {/* Sarlavhasiz, chegarasiz — Efir'dagi "ЧАЙ СВЕРХМОЩНОСТЬ" bilan bir
-          xil toza ko'rinish uchun. Faqat funksional tugmalar (chiqish,
-          guruhlar) qoladi, matn/border yo'q. Yuqoridan qo'shimcha bo'sh joy
-          (safe-area + o'zi) — Telegram'ning o'z "⋮ ⌄ ✕" native paneli aynan
-          shu burchakda bo'lgani uchun, tugmalar shu bilan to'qnashmasin. */}
+    <div className="bg-[#060a14] text-[#dfe2f1] p-3 flex flex-col flex-1 min-h-0 select-none">
+      {/* Sleek chat header with back button, brand title, user ID, and rooms button */}
       <div
-        className="flex items-center justify-between mb-2"
+        className="flex items-center justify-between pb-2 mb-2 border-b border-[rgba(39,217,247,0.14)]"
         style={{ paddingTop: 'calc(76px + env(safe-area-inset-top))' }}
       >
-        <div className="flex items-center gap-2">
-          <span className="rift-sticker text-[10px]" style={{ '--sticker-rot': '-3deg' } as any}>ЧАТ</span>
+        <div className="flex items-center gap-2.5">
           {onExit && (
             <button
               onClick={onExit}
-              aria-label="Выйти из чата"
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(237,234,227,0.1)' }}
+              aria-label="Назад"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[rgba(15,19,30,0.8)] border border-[rgba(39,217,247,0.22)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/40 active:scale-95 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
             >
-              <svg className="w-4 h-4 text-[var(--text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-4 h-4 text-[#27d9f7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           )}
+          <div className="flex flex-col">
+            <span className="text-xs font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
+              Живой Чат
+            </span>
+            <span className="text-[10px] text-[#859397] font-mono">INTRA GROUP</span>
+          </div>
         </div>
-        <RoomsButton user={currentUser} isLive={isLive} />
+
+        <div className="flex items-center gap-2">
+          {currentUser?.telegram_id ? (
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(15,19,30,0.85)] border border-[rgba(39,217,247,0.25)] shadow-[0_0_12px_rgba(39,217,247,0.1)]"
+            >
+              <span className="text-[9px] font-extrabold text-[#859397] uppercase font-['Sora']">ID</span>
+              <span className="font-mono text-xs font-bold text-[#27d9f7] tabular-nums">
+                {currentUser.telegram_id}
+              </span>
+            </div>
+          ) : null}
+          <RoomsButton user={currentUser} isLive={isLive} />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 min-h-[60px] scroll-smooth"

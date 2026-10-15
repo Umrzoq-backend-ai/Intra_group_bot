@@ -946,3 +946,66 @@ export async function adminDeleteNomination(nominationId: number) {
   if (!resp.ok) throw new Error('Failed to delete nomination');
   return resp.json();
 }
+
+// ============ Jonli efirga ulanish / Live Mic Request (Hand-raise) ============
+export interface LiveMicRequest {
+  id: number;
+  user_id: number;
+  telegram_id: number | null;
+  username: string | null;
+  display_name: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string | null;
+}
+
+export async function requestLiveMic(city: string) {
+  const resp = await fetch(`${API_URL}/radio/${encodeURIComponent(city)}/mic-requests`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.detail || 'Не удалось отправить запрос в эфир');
+  }
+  return resp.json();
+}
+
+export async function getLiveMicRequests(city: string): Promise<LiveMicRequest[]> {
+  const resp = await fetch(`${API_URL}/radio/${encodeURIComponent(city)}/mic-requests`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) return [];
+  return resp.json();
+}
+
+export async function approveLiveMicRequest(city: string, requestId: number) {
+  const resp = await fetch(`${API_URL}/radio/${encodeURIComponent(city)}/mic-requests/${requestId}/approve`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.detail || 'Ошибка одобрения');
+  }
+  return resp.json();
+}
+
+export async function rejectLiveMicRequest(city: string, requestId: number) {
+  const resp = await fetch(`${API_URL}/radio/${encodeURIComponent(city)}/mic-requests/${requestId}/reject`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.detail || 'Ошибка отклонения');
+  }
+  return resp.json();
+}
+
+export async function getMyMicRequest(city: string): Promise<{ status: 'none' | 'pending' | 'approved' | 'rejected'; request_id: number | null }> {
+  const resp = await fetch(`${API_URL}/radio/${encodeURIComponent(city)}/mic-requests/me`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) return { status: 'none', request_id: null };
+  return resp.json();
+}

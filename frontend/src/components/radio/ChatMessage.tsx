@@ -11,54 +11,75 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, currentUser }: ChatMessageProps) {
   const { t } = useTranslation('radio');
-  const isAI = message.kind === 'ai' || message.username?.includes('ИИ');
-  const isMine = currentUser && message.username === (currentUser.username || currentUser.full_name || `id${currentUser.telegram_id}`);
+  const isAI = message.kind === 'ai' || message.username?.includes('ИИ') || message.message_type === 'ai';
+  
+  // Robust check for own message (by telegram_id or username)
+  const isMine = !!(
+    currentUser && (
+      (message.telegram_id && currentUser.telegram_id && Number(message.telegram_id) === Number(currentUser.telegram_id)) ||
+      (message.username && (
+        message.username === currentUser.username ||
+        message.username === currentUser.full_name ||
+        message.username === currentUser.display_name ||
+        message.username === `id${currentUser.telegram_id}`
+      ))
+    )
+  );
 
-  const time = new Date(message.created_at).toLocaleTimeString('ru-RU', {
+  const time = new Date(message.created_at).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  let messageClass = 'flex text-sm leading-relaxed';
-  if (isAI) messageClass += ' justify-center';
-  else if (isMine) messageClass += ' justify-end';
-  else messageClass += ' justify-start';
-
-  // Наклейки под лёгким углом — "приклеены" в чат, а не ровные пилюли.
-  // Знак чередуется по id сообщения, чтобы соседние пузыри не были
-  // зеркально одинаковыми (не рандом на каждый рендер — стабильно по id).
-  const tilt = (message.id % 2 === 0 ? 1 : -1) * (1 + (message.id % 3));
-
-  let bubbleClass = 'max-w-[80%] px-3 py-2 border-2';
-  if (isAI) {
-    bubbleClass += ' rift-halftone rift-torn-b bg-[rgba(167,139,250,0.12)] border-dashed border-[var(--ai)] text-center max-w-[92%]';
-  } else if (isMine) {
-    bubbleClass += ' rift-torn-a bg-gradient-to-br from-[var(--accent-light)] to-[var(--accent)] border-[var(--text)] text-[#0d0e11] shadow-[3px_3px_0_rgba(0,0,0,0.3)]';
-  } else {
-    bubbleClass += ' rift-torn-c bg-[rgba(251,146,60,0.12)] border-[var(--glass-border)] shadow-[3px_3px_0_rgba(0,0,0,0.22)]';
-  }
-
   const renderContent = () => {
     if (message.voice_url) {
-      return <VoicePlayer url={message.voice_url} duration={message.duration_sec ?? null} voiceLabel={t('voice_label')} />;
+      return <VoicePlayer url={message.voice_url} duration={message.duration_sec ?? null} voiceLabel={t('voice_label')} isMine={isMine} />;
     }
     if (message.file_url) {
-      return <FileAttachment url={message.file_url} name={message.file_name || 'файл'} isMine={!!isMine} />;
+      return <FileAttachment url={message.file_url} name={message.file_name || 'файл'} isMine={isMine} />;
     }
-    return <div className="break-words">{message.message}</div>;
+    return <div className="break-words text-sm leading-relaxed">{message.message}</div>;
   };
 
+  const senderId = message.telegram_id || (isMine ? currentUser?.telegram_id : null);
+  const senderName = isMine ? 'Вы' : (message.display_name || message.username || t('guest'));
+
   return (
-    <div className={messageClass}>
-      <div className={bubbleClass} style={isAI ? undefined : { transform: `rotate(${tilt}deg)` }}>
-        {!isMine && !isAI && (
-          <div className="text-[11px] font-bold text-[var(--accent-light)] mb-0.5">
-            {message.username || t('guest')}
+    <div className={`flex w-full ${isAI ? 'justify-center' : isMine ? 'justify-end' : 'justify-start'} my-1`}>
+      <div
+        className={`relative transition-all duration-200 ${
+          isAI
+            ? 'max-w-[92%] px-4 py-3 rounded-2xl bg-[rgba(139,92,246,0.12)] border border-[rgba(139,92,246,0.35)] shadow-[0_4px_20px_rgba(139,92,246,0.15)] backdrop-blur-md text-[#e9d5ff]'
+            : isMine
+            ? 'max-w-[82%] px-3.5 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-[#059af0]/25 via-[#27d9f7]/20 to-[#059af0]/30 border border-[rgba(39,217,247,0.35)] shadow-[0_4px_20px_rgba(0,0,0,0.4),0_0_15px_rgba(39,217,247,0.12)] backdrop-blur-md text-[#dfe2f1]'
+            : 'max-w-[82%] px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[rgba(15,19,30,0.75)] border border-[rgba(39,217,247,0.18)] shadow-[0_4px_20px_rgba(0,0,0,0.35)] backdrop-blur-md text-[#dfe2f1]'
+        }`}
+      >
+        {/* Header with Sender Name + Prominent User ID Badge */}
+        {!isAI && (
+          <div className="flex items-center gap-1.5 mb-1 text-[11px] select-none">
+            <span className={`font-bold ${isMine ? 'text-[#27d9f7]' : 'text-[#c2f3ff]'}`}>
+              {senderName}
+            </span>
+            {senderId && (
+              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[rgba(39,217,247,0.12)] text-[#27d9f7] border border-[rgba(39,217,247,0.25)]">
+                ID: {senderId}
+              </span>
+            )}
+            {message.kind === 'studio' && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                В ЭФИР
+              </span>
+            )}
           </div>
         )}
+
+        {/* Message body */}
         {renderContent()}
-        <div className={`flex items-center justify-end gap-1 text-[10px] mt-0.5 ${isMine ? 'text-[rgba(23,24,28,0.65)]' : 'text-[var(--muted)]'}`}>
-          {time}
+
+        {/* Footer timestamp & delivery status */}
+        <div className={`flex items-center justify-end gap-1 text-[10px] font-mono mt-1 ${isMine ? 'text-[#27d9f7]/80' : 'text-[#859397]'}`}>
+          <span>{time}</span>
           {isMine && message.status && <StatusTicks status={message.status} />}
         </div>
       </div>
@@ -66,19 +87,13 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
   );
 }
 
-// Telegram uslubidagi galochkalar — faqat shu sessiyada yuborilgan xabarlar
-// uchun (status maydoni bo'lgan xabarlarda). "Delivered" WS orqali xabar
-// serverdan qaytib kelganini bildiradi (haqiqiy "o'qildi" holati emas —
-// guruh chatida bittalab o'qilganlikni kuzatish yo'q).
 function StatusTicks({ status }: { status: 'sending' | 'sent' | 'delivered' }) {
-  if (status === 'sending') return <Clock className="w-3 h-3 shrink-0" />;
-  if (status === 'delivered') return <CheckCheck className="w-3.5 h-3.5 shrink-0" />;
-  return <Check className="w-3.5 h-3.5 shrink-0" />;
+  if (status === 'sending') return <Clock className="w-3 h-3 text-[#859397] shrink-0" />;
+  if (status === 'delivered') return <CheckCheck className="w-3.5 h-3.5 text-[#27d9f7] shrink-0" />;
+  return <Check className="w-3.5 h-3.5 text-[#27d9f7]/70 shrink-0" />;
 }
 
-function VoicePlayer({ url, duration, voiceLabel }: { url: string; duration: number | null; voiceLabel: string }) {
-  // blob: — hali serverga yuklanmagan, optimistik ko'rsatilayotgan ovoz
-  // (mahalliy URL, o'zgartirmasdan ishlatiladi).
+function VoicePlayer({ url, duration, voiceLabel, isMine }: { url: string; duration: number | null; voiceLabel: string; isMine: boolean }) {
   const fullUrl = url.startsWith('http') || url.startsWith('blob:') ? url : `${API_URL}${url}`;
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -106,20 +121,24 @@ function VoicePlayer({ url, duration, voiceLabel }: { url: string; duration: num
   };
 
   return (
-    <div className="flex items-center gap-2.5 min-w-[130px]">
+    <div className="flex items-center gap-2.5 min-w-[140px] my-1">
       <button
         onClick={handlePlay}
-        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          failed ? 'bg-[var(--danger)] text-white' : 'bg-[rgba(23,24,28,0.3)]'
+        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+          failed
+            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+            : isMine
+            ? 'bg-[#27d9f7] text-[#060a14] shadow-[0_0_12px_rgba(39,217,247,0.4)] active:scale-95'
+            : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.3)] active:scale-95'
         }`}
       >
-        {failed ? <AlertTriangle className="w-3.5 h-3.5" /> : playing ? <Pause className="w-3.5 h-3.5" fill="currentColor" /> : <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />}
+        {failed ? <AlertTriangle className="w-3.5 h-3.5" /> : playing ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />}
       </button>
-      <span className="text-xs opacity-85 flex items-center gap-1">
-        <Music2 className="w-3 h-3" /> {duration ? `${duration}ʺ` : voiceLabel}
+      <span className="text-xs text-[#dfe2f1] font-mono flex items-center gap-1">
+        <Music2 className="w-3 h-3 text-[#27d9f7]" /> {duration ? `${duration}ʺ` : voiceLabel}
       </span>
       {failed && (
-        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="text-white">
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="text-rose-400 hover:text-rose-300">
           <Download className="w-3.5 h-3.5" />
         </a>
       )}
@@ -136,14 +155,16 @@ function FileAttachment({ url, name, isMine }: { url: string; name: string; isMi
       href={fullUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 min-w-[120px] no-underline"
+      className="flex items-center gap-2 min-w-[130px] my-1 no-underline group"
     >
-      <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 ${
-        isMine ? 'bg-[rgba(23,24,28,0.25)]' : 'bg-[var(--accent)] text-[#0d0e11]'
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+        isMine
+          ? 'bg-[#27d9f7] text-[#060a14]'
+          : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.3)]'
       }`}>
         <Paperclip className="w-3.5 h-3.5" />
       </div>
-      <span className="text-[13px] underline break-all">{fileName}</span>
+      <span className="text-xs text-[#dfe2f1] group-hover:text-[#27d9f7] underline break-all transition-colors">{fileName}</span>
     </a>
   );
 }

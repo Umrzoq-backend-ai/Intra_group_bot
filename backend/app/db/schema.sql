@@ -400,3 +400,16 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN NULL;
     END;
 END $$;
+
+-- ============ Jonli efirga ulanish / mikrofon so'rovlari (Live Mic Requests) ============
+CREATE TABLE IF NOT EXISTS live_mic_requests (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    city            VARCHAR(50) DEFAULT 'global',
+    status          VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected | expired
+    created_at      TIMESTAMP DEFAULT NOW(),
+    decided_at      TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mic_requests_status ON live_mic_requests(city, status);
+CREATE INDEX IF NOT EXISTS idx_mic_requests_user ON live_mic_requests(user_id, status);

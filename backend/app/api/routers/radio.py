@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from app.core.config import settings
 from app.core.constants import ROLE_LEVELS
 from app.core.database import db
-from app.core.dependencies import decode_token, require_role
+from app.core.dependencies import decode_token, get_current_user, require_role
 from app.core.internal_auth import require_internal_key
 from app.core.models import (
     OkResponse,
@@ -486,8 +486,18 @@ async def broadcast_ws(websocket: WebSocket, city: str, token: str = Query(...))
         await websocket.close(code=4401)
         return
     if ROLE_LEVELS.get(user["role"], 0) < ROLE_LEVELS["doverenniy"]:
-        await websocket.close(code=4403)  # huquq yo'q
-        return
+        approved_mic = await db.fetchrow(
+            """
+            SELECT id FROM live_mic_requests
+            WHERE user_id = $1 AND status = 'approved'
+              AND created_at >= NOW() - INTERVAL '30 minutes'
+            ORDER BY id DESC LIMIT 1
+            """,
+            user["id"],
+        )
+        if not approved_mic:
+            await websocket.close(code=4403)  # huquq yo'q
+            return
 
     await websocket.accept()
 
@@ -590,12 +600,14 @@ _http_broadcast_owner: dict[str, int] = {}  # city -> user_id
 
 
 @router.post("/{city}/broadcast/start")
-async def broadcast_http_start(city: str, user: dict = Depends(require_role("doverenniy"))):
-    """[doverenniy+] Mikrofon efirini boshlaydi (HTTP chunk fallback).
+async def broadcast_http_start(city: str, user: dict = Depends(get_current_user)):
+    """[doverenniy+ yoki tasdiqlangan mikrofon so'rovi] Mikrofon efirini boshlaydi.
 
     Doverenniy uchun efir faqat hozir vaqti kelgan (bron qilingan) sloti
     bo'lganda boshlanadi — slot bo'lmasa "no_slot" qaytariladi. Admin uchun
-    slot shart emas — vaqt chegarasiz efirga chiqa oladi (barcha huquqlar).
+    slot shart emas — vaqt chegarasiz efirga chiqa oladi.
+    Tinglovchi (listener) uchun esa live mic so'rovi tasdiqlangan bo'lsa
+    5 daqiqa jonli chiqish beriladi.
     """
     if city not in VALID_CITIES and city != "global":
         raise HTTPException(status_code=404, detail="City not found")
@@ -606,11 +618,14 @@ async def broadcast_http_start(city: str, user: dict = Depends(require_role("dov
         return {"status": "busy"}
 
     is_admin = user["role"] == "admin"
+    is_doverenniy = ROLE_LEVELS.get(user["role"], 0) >= ROLE_LEVELS["doverenniy"]
     slot = None
     expires_at: datetime | None = None
     remaining_sec: int | None = None
 
-    if not is_admin:
+    if is_admin:
+        pass
+    elif is_doverenniy:
         slot = await _find_active_slot(user["id"])
         if not slot:
             return {"status": "no_slot"}
@@ -621,6 +636,21 @@ async def broadcast_http_start(city: str, user: dict = Depends(require_role("dov
         remaining_sec = int((expires_at - datetime.now(UTC)).total_seconds())
         if remaining_sec <= 0:
             return {"status": "no_slot"}
+    else:
+        # Jonli efirda so'z olish so'rovi tasdiqlanganmi tekshiramiz
+        approved_mic = await db.fetchrow(
+            """
+            SELECT id FROM live_mic_requests
+            WHERE user_id = $1 AND status = 'approved'
+              AND created_at >= NOW() - INTERVAL '30 minutes'
+            ORDER BY id DESC LIMIT 1
+            """,
+            user["id"],
+        )
+        if not approved_mic:
+            raise HTTPException(status_code=403, detail="Not authorized to broadcast")
+        remaining_sec = 300  # 5 daqiqa
+        expires_at = datetime.now(UTC) + timedelta(seconds=remaining_sec)
 
     name = user["full_name"] or user["username"] or "Doverenniy"
 
@@ -697,9 +727,9 @@ async def broadcast_http_chunk(
 
 
 @router.post("/{city}/broadcast/stop")
-async def broadcast_http_stop(city: str, user: dict = Depends(require_role("doverenniy"))):
-    """[doverenniy+] Mikrofon efirini tugatadi (HTTP chunk fallback)."""
-    if _http_broadcast_owner.get(city) != user["id"]:
+async def broadcast_http_stop(city: str, user: dict = Depends(get_current_user)):
+    """Mikrofon efirini tugatadi (HTTP chunk fallback)."""
+    if _http_broadcast_owner.get(city) != user["id"] and user["role"] != "admin":
         raise HTTPException(status_code=403, detail="No active broadcast session for this user")
 
     await _stop_city_broadcast(city)
@@ -724,4 +754,189 @@ async def live_by_token(token: str):
         "city": city,
         "broadcaster_name": st.broadcaster_name,
         "listeners_count": manager.listeners_count(city),
+    }
+
+
+# ============ Jonli efirda so'z olish / Mikrofon so'rovlari (Live Hand Raise) ============
+@router.post("/{city}/mic-requests")
+async def request_live_mic(city: str, user: dict = Depends(get_current_user)):
+    """[listener] Jonli efirda so'z olish / mikrofon so'rovi yuborish (qo'l ko'tarish)."""
+    st = get_state(city)
+    if not st.is_live:
+        raise HTTPException(status_code=400, detail="Hozir jonli efir mavjud emas")
+
+    existing = await db.fetchrow(
+        """
+        SELECT id, status FROM live_mic_requests
+        WHERE user_id = $1 AND city = $2 AND status = 'pending'
+          AND created_at >= NOW() - INTERVAL '15 minutes'
+        ORDER BY id DESC LIMIT 1
+        """,
+        user["id"],
+        city,
+    )
+    if existing:
+        return {"ok": True, "request_id": existing["id"], "status": "pending"}
+
+    row = await db.fetchrow(
+        """
+        INSERT INTO live_mic_requests (user_id, city, status)
+        VALUES ($1, $2, 'pending')
+        RETURNING id, created_at
+        """,
+        user["id"],
+        city,
+    )
+
+    display_name = (
+        user.get("display_name")
+        or user.get("username")
+        or user.get("full_name")
+        or f"id{user['telegram_id']}"
+    )
+    await manager.broadcast(
+        city,
+        {
+            "type": "mic_request",
+            "data": {
+                "id": row["id"],
+                "user_id": user["id"],
+                "telegram_id": user.get("telegram_id"),
+                "username": user.get("username"),
+                "display_name": display_name,
+                "created_at": row["created_at"].isoformat(),
+            },
+        },
+    )
+    return {"ok": True, "request_id": row["id"], "status": "pending"}
+
+
+@router.get("/{city}/mic-requests")
+async def list_mic_requests(city: str, user: dict = Depends(get_current_user)):
+    """[broadcaster/staff] Jonli efirda mikrofon so'raganlar ro'yxati."""
+    is_staff_or_host = (
+        ROLE_LEVELS.get(user["role"], 0) >= ROLE_LEVELS["doverenniy"]
+        or _http_broadcast_owner.get(city) == user["id"]
+    )
+    if not is_staff_or_host:
+        raise HTTPException(status_code=403, detail="Faqat boshlovchi yoki admin ko'ra oladi")
+
+    rows = await db.fetch(
+        """
+        SELECT r.id, r.user_id, r.status, r.created_at,
+               u.telegram_id, u.username, u.display_name, u.full_name
+        FROM live_mic_requests r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.city = $1 AND r.status = 'pending'
+          AND r.created_at >= NOW() - INTERVAL '1 hour'
+        ORDER BY r.created_at ASC
+        """,
+        city,
+    )
+    out = []
+    for r in rows:
+        disp = r["display_name"] or r["username"] or r["full_name"] or f"id{r['telegram_id']}"
+        out.append(
+            {
+                "id": r["id"],
+                "user_id": r["user_id"],
+                "telegram_id": r["telegram_id"],
+                "username": r["username"],
+                "display_name": disp,
+                "status": r["status"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+        )
+    return out
+
+
+@router.post("/{city}/mic-requests/{request_id}/approve")
+async def approve_mic_request(city: str, request_id: int, user: dict = Depends(get_current_user)):
+    """[broadcaster/staff] Ishtirokchiga mikrofon berish / efirga ulash."""
+    is_staff_or_host = (
+        ROLE_LEVELS.get(user["role"], 0) >= ROLE_LEVELS["doverenniy"]
+        or _http_broadcast_owner.get(city) == user["id"]
+    )
+    if not is_staff_or_host:
+        raise HTTPException(status_code=403, detail="Faqat boshlovchi yoki admin ruxsat bera oladi")
+
+    req = await db.fetchrow(
+        "SELECT r.*, u.telegram_id, u.username, u.display_name FROM live_mic_requests r JOIN users u ON u.id = r.user_id WHERE r.id = $1",
+        request_id,
+    )
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    await db.execute(
+        "UPDATE live_mic_requests SET status = 'approved', decided_at = NOW() WHERE id = $1",
+        request_id,
+    )
+
+    await manager.broadcast(
+        city,
+        {
+            "type": "mic_approved",
+            "data": {
+                "request_id": request_id,
+                "user_id": req["user_id"],
+                "telegram_id": req["telegram_id"],
+                "display_name": req["display_name"] or req["username"] or f"id{req['telegram_id']}",
+            },
+        },
+    )
+    return {"ok": True, "user_id": req["user_id"], "status": "approved"}
+
+
+@router.post("/{city}/mic-requests/{request_id}/reject")
+async def reject_mic_request(city: str, request_id: int, user: dict = Depends(get_current_user)):
+    """[broadcaster/staff] Mikrofon so'rovini rad etish."""
+    is_staff_or_host = (
+        ROLE_LEVELS.get(user["role"], 0) >= ROLE_LEVELS["doverenniy"]
+        or _http_broadcast_owner.get(city) == user["id"]
+    )
+    if not is_staff_or_host:
+        raise HTTPException(status_code=403, detail="Faqat boshlovchi yoki admin rad eta oladi")
+
+    req = await db.fetchrow("SELECT * FROM live_mic_requests WHERE id = $1", request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    await db.execute(
+        "UPDATE live_mic_requests SET status = 'rejected', decided_at = NOW() WHERE id = $1",
+        request_id,
+    )
+
+    await manager.broadcast(
+        city,
+        {
+            "type": "mic_rejected",
+            "data": {
+                "request_id": request_id,
+                "user_id": req["user_id"],
+            },
+        },
+    )
+    return {"ok": True, "status": "rejected"}
+
+
+@router.get("/{city}/mic-requests/me")
+async def get_my_mic_request(city: str, user: dict = Depends(get_current_user)):
+    """[listener] O'zimning mikrofon so'rovi holatini tekshirish."""
+    row = await db.fetchrow(
+        """
+        SELECT id, status, created_at, decided_at
+        FROM live_mic_requests
+        WHERE user_id = $1 AND city = $2
+          AND created_at >= NOW() - INTERVAL '30 minutes'
+        ORDER BY id DESC LIMIT 1
+        """,
+        user["id"],
+        city,
+    )
+    if not row:
+        return {"status": "none", "request_id": None}
+    return {
+        "status": row["status"],
+        "request_id": row["id"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
