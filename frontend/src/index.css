@@ -13,51 +13,49 @@
 
 @layer base {
   :root {
-    /* Fallback / U5 — неон-минимализм: используется каркасом
-       (BottomNav, Splash, Welcome) и всем, что не обёрнуто в
-       конкретную .rift-zone-uN. */
-    --bg: #050505;
-    --bg2: #0d0d0f;
-    --card: #0d0d10;
-    --card-solid: #0d0d10;
-    --card-soft: rgba(13, 13, 16, 0.85);
-    --border: rgba(0, 240, 192, 0.25);
-    --glass-border: rgba(0, 240, 192, 0.25);
-    --border-accent: rgba(0, 240, 192, 0.4);
-    --icon-muted: #7a7a7a;
+    /* INTRA GROUP Modernized Design System (Dark Obsidian Glass) */
+    --bg: #060a14;
+    --bg2: #0f131e;
+    --card: rgba(15, 19, 30, 0.65);
+    --card-solid: #0f131e;
+    --card-soft: rgba(21, 26, 38, 0.75);
+    --border: rgba(39, 217, 247, 0.18);
+    --glass-border: rgba(39, 217, 247, 0.18);
+    --border-accent: rgba(39, 217, 247, 0.45);
+    --icon-muted: #859397;
 
-    --primary: #00c9a3;
-    --primary2: #00a686;
+    --primary: #27d9f7;
+    --primary2: #059af0;
 
-    --accent: #00F0C0;
-    --accent2: #00c9a3;
-    --accent-light: #5ffbe0;
-    --glow: rgba(0, 240, 192, 0.3);
-    --accent-glow: rgba(0, 240, 192, 0.3);
+    --accent: #27d9f7;
+    --accent2: #059af0;
+    --accent-light: #c2f3ff;
+    --glow: rgba(39, 217, 247, 0.3);
+    --accent-glow: rgba(39, 217, 247, 0.35);
 
-    --live: #39FF6A;
-    --green: #39FF6A;
-    --warning: #F5A623;
-    --danger: #FF3B5C;
-    --danger-soft: rgba(255, 59, 92, 0.15);
-    --red: #FF3B5C;
-    --ai: #B993FF;
+    --live: #27d9f7;
+    --green: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --danger-soft: rgba(239, 68, 68, 0.15);
+    --red: #ef4444;
+    --ai: #8b5cf6;
 
-    --text: #EDEDED;
-    --muted: #9a9a9a;
+    --text: #dfe2f1;
+    --muted: #859397;
     --app-vh: 100vh;
     --halftone-blend: screen;
-    --zone-font-display: 'Space Mono', monospace;
-    --zone-font-body: 'Space Mono', monospace;
+    --zone-font-display: 'Sora', sans-serif;
+    --zone-font-body: 'Inter', system-ui, sans-serif;
 
     --tg-safe-top: 0px;
     --tg-safe-bottom: 0px;
     --tg-safe-left: 0px;
     --tg-safe-right: 0px;
 
-    --primary-dim: #00c9a3;
-    --primary-light: #5ffbe0;
-    --secondary-blue: #00a686;
+    --primary-dim: #27d9f7;
+    --primary-light: #c2f3ff;
+    --secondary-blue: #059af0;
   }
 
   /* ── U1 — 90s-комикс: Эфир ── */
@@ -123,34 +121,33 @@
   }
 
   /* ── U3 — CRT/глитч: Админка ── */
+  /* ── U3 — Modern Obsidian Glass ── */
   .rift-zone-u3 {
-    --bg: #05070A;
-    --bg2: #0a0d10;
-    --card: #0a0f0c;
-    --card-solid: #0a0f0c;
-    --card-soft: rgba(10, 15, 12, 0.88);
-    --border: rgba(57, 255, 106, 0.28);
-    --glass-border: rgba(57, 255, 106, 0.28);
-    --icon-muted: #4f7a52;
-    --primary: #39FF6A;
-    --primary2: #1fce4c;
-    --accent: #39FF6A;
-    --accent2: #1fce4c;
-    --accent-light: #7dffa0;
-    --glow: rgba(57, 255, 106, 0.3);
-    --accent-glow: rgba(57, 255, 106, 0.3);
-    --live: #39FF6A;
-    --green: #39FF6A;
-    --danger: #FF2FD0;
-    --ai: #FF2FD0;
-    --text: #C8FFCB;
-    --muted: #6f9c72;
+    --bg: #060a14;
+    --bg2: #0f131e;
+    --card: rgba(15, 19, 30, 0.65);
+    --card-solid: #0f131e;
+    --card-soft: rgba(21, 26, 38, 0.75);
+    --border: rgba(39, 217, 247, 0.2);
+    --glass-border: rgba(39, 217, 247, 0.2);
+    --icon-muted: #859397;
+    --primary: #27d9f7;
+    --primary2: #059af0;
+    --accent: #27d9f7;
+    --accent2: #059af0;
+    --accent-light: #c2f3ff;
+    --glow: rgba(39, 217, 247, 0.3);
+    --accent-glow: rgba(39, 217, 247, 0.35);
+    --live: #27d9f7;
+    --green: #22c55e;
+    --danger: #ef4444;
+    --ai: #8b5cf6;
+    --text: #dfe2f1;
+    --muted: #859397;
     --halftone-blend: screen;
-    --zone-font-display: 'Press Start 2P', monospace;
-    --zone-font-body: 'VT323', monospace;
-    background:
-      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 1px, transparent 1px, transparent 3px),
-      var(--bg);
+    --zone-font-display: 'Sora', sans-serif;
+    --zone-font-body: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
     color: var(--text);
     font-family: var(--zone-font-body);
   }

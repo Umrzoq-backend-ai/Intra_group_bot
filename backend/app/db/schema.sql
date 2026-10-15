@@ -375,3 +375,28 @@ CREATE TABLE IF NOT EXISTS broadcast_drafts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_broadcast_drafts_status ON broadcast_drafts(status, created_at DESC);
+
+-- Ensure user deletions cascade or set null properly
+DO $$
+BEGIN
+    -- topics created_by
+    BEGIN
+        ALTER TABLE topics DROP CONSTRAINT IF EXISTS topics_created_by_fkey;
+        ALTER TABLE topics ADD CONSTRAINT topics_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    -- broadcast_slots created_by
+    BEGIN
+        ALTER TABLE broadcast_slots DROP CONSTRAINT IF EXISTS broadcast_slots_created_by_fkey;
+        ALTER TABLE broadcast_slots ADD CONSTRAINT broadcast_slots_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    -- opinions user_id
+    BEGIN
+        ALTER TABLE opinions DROP CONSTRAINT IF EXISTS opinions_user_id_fkey;
+        ALTER TABLE opinions ADD CONSTRAINT opinions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+END $$;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
-import { Send, X, Loader, Coffee, Activity, Users, Sparkles, Square, Check, Mic, Link2 } from 'lucide-react';
+import { Send, X, Loader, MessageSquare, Activity, Users, Sparkles, Square, Check, Mic, Link2 } from 'lucide-react';
 import { ChatMessage as ChatMessageComponent } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { RoomsButton } from './RoomsScreen';
@@ -428,114 +428,121 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <Loader className="w-10 h-10 text-[#39FF6A] animate-spin" />
-        <p className="text-xs text-[#6f9c72] tracking-widest uppercase">Загрузка эфира...</p>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <Loader className="w-10 h-10 text-[#27d9f7] animate-spin" />
+        <p className="text-xs text-[#859397] font-mono tracking-widest uppercase">Загрузка эфира...</p>
       </div>
     );
   }
 
   return (
-    <div className="rift-zone-u3 flex flex-col relative select-none">
+    <div className="w-full flex flex-col relative select-none">
 
       {canGoLive && isLive && !isLivePaused && (
-        <span className="rift-boom" style={{ top: '4px', right: '4%', ['--boom-rot' as any]: '-10deg' }} aria-hidden="true">
-          В ЭФИР!
-        </span>
+        <div className="absolute top-2 right-4 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ef4444]/20 border border-[#ef4444]/50 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+          <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-ping" />
+          <span className="text-[10px] font-extrabold tracking-wider text-[#ef4444] uppercase font-['Sora']">В ЭФИРЕ</span>
+        </div>
       )}
 
       {/* ── УРОВЕНЬ / ПОТОК REAL TIME ── */}
-      <div className="text-center pt-2 pb-4">
-        <div className="text-[11px] font-semibold tracking-[3px] text-[#6f9c72] uppercase mb-0.5">
-          УРОВЕНЬ {level}
+      <div className="text-center pt-2 pb-3 flex flex-col items-center gap-1">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(39,217,247,0.08)] border border-[rgba(39,217,247,0.2)]">
+          <span className="text-[10px] font-bold tracking-[2px] text-[#859397] uppercase">УРОВЕНЬ {level}</span>
+          <span className="w-1 h-1 rounded-full bg-[#27d9f7]" />
+          <span className="text-[10px] font-extrabold tracking-[2px] text-[#27d9f7] uppercase font-['Sora']">ПОТОК REAL TIME</span>
         </div>
-        <div className="text-[11px] tracking-[2px] uppercase">
-          <span className="text-[#6f9c72]">ПОТОК </span>
-          <span className="text-[#39FF6A] font-bold">REAL TIME</span>
+        {/* Listeners pill */}
+        <div className="flex items-center gap-1.5 text-[#859397] text-[11px] font-medium mt-1">
+          <Users className="w-3.5 h-3.5 text-[#27d9f7]" />
+          <span className="font-mono font-bold text-[#dfe2f1]">{radioStatus?.listeners_count || 0}</span>
+          <span>слушателей</span>
         </div>
       </div>
 
-      {/* ── Тинглаётганлар сони — плеер тугмасидан ТЕПАДА ── */}
-      <div className="flex items-center justify-center gap-1.5 text-[#6f9c72]">
-        <Users className="w-3.5 h-3.5" />
-        <span className="rift-crt-cursor text-[11px] font-semibold tabular-nums">{radioStatus?.listeners_count || 0}</span>
-      </div>
-
-      {/* ── КОЛЬЦО + VISUALIZER (кнопка play) — o'zi efirda ekan
-          o'chirilgan: o'z ovozini eshitmasin, faqat boshqalar efirda
-          bo'lganda tinglay oladi. Kichikroq (200px) — tepasida tinglovchilar
-          soni ko'rinsin deb. ── */}
-      <div className="flex items-center justify-center py-1">
+      {/* ── КОЛЬЦО + VISUALIZER (кнопка play) ── */}
+      <div className="flex items-center justify-center py-2">
         <button
           onClick={isLive ? undefined : audioPlayer.togglePlay}
           disabled={isLive}
-          className="relative flex items-center justify-center active:scale-95 transition-transform duration-150 disabled:active:scale-100 disabled:cursor-default"
+          className="relative flex items-center justify-center active:scale-95 transition-transform duration-200 disabled:active:scale-100 disabled:cursor-default"
           aria-label={isLive ? 'own-broadcast' : (audioPlayer.isPlaying ? 'pause' : 'play')}
         >
-          <Visualizer isPlaying={audioPlayer.isPlaying && !isLive} size={200} />
+          <Visualizer isPlaying={audioPlayer.isPlaying && !isLive} size={220} />
           {isLive ? (
-            <span className="absolute z-10 w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(10,15,12,0.5)', backdropFilter: 'blur(4px)' }}>
-              <Mic className="w-4.5 h-4.5 text-[#39FF6A]" />
+            <span
+              className="absolute z-10 w-11 h-11 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(39,217,247,0.5)]"
+              style={{ background: 'rgba(15, 19, 30, 0.85)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(39, 217, 247, 0.5)' }}
+            >
+              <Mic className="w-5 h-5 text-[#27d9f7]" />
             </span>
           ) : audioPlayer.isLoading ? (
-            <span className="absolute z-10 w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(10,15,12,0.5)', backdropFilter: 'blur(4px)' }}>
-              <Loader className="w-4.5 h-4.5 text-[#39FF6A] animate-spin" />
+            <span
+              className="absolute z-10 w-11 h-11 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(39,217,247,0.5)]"
+              style={{ background: 'rgba(15, 19, 30, 0.85)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(39, 217, 247, 0.5)' }}
+            >
+              <Loader className="w-5 h-5 text-[#27d9f7] animate-spin" />
             </span>
-          ) : !audioPlayer.isPlaying && (
-            <span className="absolute z-10 w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(10,15,12,0.5)', backdropFilter: 'blur(4px)' }}>
-              <svg className="w-4.5 h-4.5 text-[#39FF6A] ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
+          ) : !audioPlayer.isPlaying ? (
+            <span
+              className="absolute z-10 w-11 h-11 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(39,217,247,0.5)]"
+              style={{ background: 'rgba(15, 19, 30, 0.85)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(39, 217, 247, 0.5)' }}
+            >
+              <svg className="w-5 h-5 text-[#27d9f7] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
               </svg>
+            </span>
+          ) : (
+            <span
+              className="absolute z-10 w-11 h-11 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(39,217,247,0.5)]"
+              style={{ background: 'rgba(15, 19, 30, 0.85)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(39, 217, 247, 0.5)' }}
+            >
+              <Square className="w-4 h-4 text-[#27d9f7]" fill="currentColor" />
             </span>
           )}
         </button>
       </div>
 
       {/* ── ID + ЗАГОЛОВОК ── */}
-      <div className="text-center px-4 mt-2 mb-3">
-        <div className="text-[10px] text-[#6f9c72] tracking-widest mb-1">
+      <div className="text-center px-4 mt-1 mb-3">
+        <div className="text-[10px] text-[#859397] font-mono tracking-widest mb-1 opacity-80">
           ID: {user?.telegram_id || '-----'}
         </div>
-        <GlitchText
-          tag="div"
-          text={radioStatus?.is_live ? 'Активация переосмысления' : 'Ожидание потока'}
-          className="text-[15px] font-bold tracking-wide text-[#C8FFCB] leading-tight font-display"
-        />
-        <div className="text-[11px] text-[#6f9c72] mt-1 tracking-wide">
+        <h2 className="text-[18px] sm:text-[20px] font-extrabold tracking-wide uppercase bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#98cbff] bg-clip-text text-transparent font-['Sora'] drop-shadow-[0_0_12px_rgba(39,217,247,0.3)]">
+          {radioStatus?.is_live ? 'Активация переосмысления' : 'Ожидание потока'}
+        </h2>
+        <div className="text-[11px] font-semibold text-[#859397] mt-1 tracking-wider uppercase font-mono">
           {broadcasterName}
         </div>
       </div>
 
-      {/* ── TIMER — faqat efirga chiqa oladiganlar (admin/moderator/
-          doverenniy) uchun, va faqat o'zi hozir jonli bo'lganda: qolgan
-          vaqtini ko'rsatadi. Oddiy tinglovchiga umuman ko'rinmaydi — avval
-          hammaga statik "00:00" ko'rsatilardi, ma'nosiz edi. Slot bo'lmagan
-          holatda (masalan admin — countdown yo'q) o'rniga QANCHA VAQT
-          efirda bo'lgani (o'sib boruvchi hisoblagich) ko'rsatiladi, efir
-          tugaganda esa umumiy davomiylik toast orqali chiqadi. */}
+      {/* ── TIMER (для ведущих во время эфира) ── */}
       {canGoLive && isLive && (
         <div className="text-center mb-4">
-          <div className={`text-[28px] font-black text-[#39FF6A] tabular-nums tracking-widest ${isLivePaused ? '' : 'rift-crt-cursor'}`}
-            style={{ textShadow: '0 0 10px rgba(57,255,106,0.35)' }}>
+          <div
+            className="text-[32px] font-black text-[#27d9f7] tabular-nums tracking-widest font-mono"
+            style={{ textShadow: '0 0 20px rgba(39, 217, 247, 0.6)' }}
+          >
             {formatTime(liveRemainingSec ?? liveElapsedSec ?? 0)}
           </div>
-          <div className="text-[9px] tracking-[3px] text-[#6f9c72] uppercase mt-0.5">
+          <div className="text-[10px] tracking-[3px] text-[#859397] uppercase mt-0.5">
             {isLivePaused ? 'Пауза' : 'Поток активен'}
           </div>
         </div>
       )}
 
-      {/* ── Копировать ссылку эфира (faqat isLive paytida, backend har safar
-          YANGI token beradi) + Группы ── */}
+      {/* ── Копировать ссылку эфира + Группы ── */}
       <div className="px-4 mb-3 flex items-center justify-between gap-2">
         {isLive && liveShareUrl ? (
           <button
             onClick={handleCopyLiveLink}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold"
-            style={{ background: 'rgba(57,255,106,0.08)', border: '1px solid rgba(57,255,106,0.3)', color: '#7dffa0' }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95"
+            style={{
+              background: 'rgba(39, 217, 247, 0.12)',
+              border: '1px solid rgba(39, 217, 247, 0.35)',
+              color: '#27d9f7',
+              boxShadow: '0 0 15px rgba(39, 217, 247, 0.15)',
+            }}
           >
             <Link2 className="w-3.5 h-3.5" />
             Копировать ссылку
@@ -544,123 +551,133 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
         <RoomsButton user={user} isLive={isLive} />
       </div>
 
-      {/* Голос записалган — hali yuborilmagan, "ОТПРАВИТЬ" bosilguncha kutadi */}
+      {/* Голос записан — ожидает отправки */}
       {pendingVoice && (
-        <div className="mx-4 mb-3 glass px-4 py-2.5 rounded-2xl flex items-center justify-between border border-dashed border-[#39FF6A]">
-          <span className="text-xs text-[#39FF6A] flex items-center gap-1.5">
+        <div className="mx-4 mb-3 px-4 py-2.5 rounded-2xl flex items-center justify-between border border-[#27d9f7]/40 bg-[rgba(39,217,247,0.12)] shadow-[0_0_15px_rgba(39,217,247,0.2)]">
+          <span className="text-xs text-[#27d9f7] font-semibold flex items-center gap-1.5">
             <Check className="w-3.5 h-3.5" /> {t('voice_ready')}
           </span>
-          <button onClick={discardPendingVoice} className="text-[#6f9c72] hover:text-white transition-colors">
+          <button onClick={discardPendingVoice} className="text-[#859397] hover:text-[#dfe2f1] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* ── 3 КНОПКИ (точно как на рисунке) ── */}
-      <div className="flex items-center justify-around px-6 pb-4 gap-3">
+      {/* ── 3 КНОПКИ (Чат эфира / Голосовое / Отправить) ── */}
+      <div className="flex items-center justify-around px-4 pb-4 gap-3">
 
-        {/* Чай / Сверхмощность — левая */}
+        {/* Чат эфира — левая */}
         <button
           onClick={openChat}
-          className="flex flex-col items-center gap-2 group flex-1"
+          className="flex flex-col items-center gap-1.5 group flex-1"
         >
           <div
-            className="w-full h-[58px] rounded-2xl flex flex-col items-center justify-center gap-1 relative transition-all duration-200 active:scale-95"
+            className="w-full h-[62px] rounded-2xl flex flex-col items-center justify-center gap-1 relative transition-all duration-200 active:scale-95 group-hover:border-[#27d9f7]/40"
             style={{
-              background: 'rgba(10,15,12,0.8)',
-              border: '1px solid rgba(200,255,203,0.14)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+              background: 'rgba(21, 26, 38, 0.65)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(39, 217, 247, 0.2)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
             }}
           >
-            <Coffee className="w-5 h-5 text-[#6f9c72] group-hover:text-[#39FF6A] transition-colors" strokeWidth={1.8} />
+            <MessageSquare className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
             {messages.length > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-[#C8FFCB]"
-                style={{ background: '#0a0f0c', border: '1px solid rgba(200,255,203,0.25)' }}>
+              <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4.5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-[#060a14] bg-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.6)]">
                 {messages.length > 9 ? '9+' : messages.length}
               </div>
             )}
           </div>
-          <span className="text-[8px] text-[#6f9c72] tracking-wide text-center leading-tight">
-            Чай<br/>сверхмощность
+          <span className="text-[10px] font-semibold text-[#859397] group-hover:text-[#dfe2f1] tracking-wide text-center leading-tight transition-colors">
+            Чат эфира
           </span>
         </button>
 
-        {/* Голосовое сообщение — центр (крупнее). Yozayotganda shakli
-            mikrofon → to'xtatish (kvadrat) belgisiga o'zgaradi. */}
+        {/* Голосовое сообщение — центр */}
         <button
           onClick={handleVoiceMessage}
-          className="flex flex-col items-center gap-2 group flex-1"
+          className="flex flex-col items-center gap-1.5 group flex-1"
           style={isLive && !isRecording ? { opacity: 0.45 } : undefined}
         >
           <div
-            className="w-full h-[58px] rounded-2xl flex flex-col items-center justify-center gap-1.5 relative transition-all duration-200 active:scale-95"
+            className="w-full h-[62px] rounded-2xl flex flex-col items-center justify-center gap-1 relative transition-all duration-200 active:scale-95"
             style={{
               background: isRecording
-                ? 'rgba(255,47,208,0.15)'
+                ? 'rgba(236, 72, 153, 0.2)'
                 : pendingVoice
-                ? 'rgba(57,255,106,0.12)'
-                : 'rgba(10,15,12,0.8)',
+                ? 'rgba(39, 217, 247, 0.18)'
+                : 'rgba(21, 26, 38, 0.65)',
+              backdropFilter: 'blur(16px)',
               border: isRecording
-                ? '1px solid rgba(255,47,208,0.5)'
+                ? '1px solid rgba(236, 72, 153, 0.6)'
                 : pendingVoice
-                ? '1px solid rgba(57,255,106,0.4)'
-                : '1px solid rgba(200,255,203,0.16)',
+                ? '1px solid rgba(39, 217, 247, 0.5)'
+                : '1px solid rgba(39, 217, 247, 0.2)',
               boxShadow: isRecording
-                ? '0 0 14px rgba(255,47,208,0.25), inset 0 1px 0 rgba(255,255,255,0.04)'
-                : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                ? '0 0 20px rgba(236, 72, 153, 0.4)'
+                : pendingVoice
+                ? '0 0 15px rgba(39, 217, 247, 0.3)'
+                : '0 4px 20px rgba(0, 0, 0, 0.35)',
             }}
           >
             {isRecording ? (
-              <Square className="w-6 h-6 text-[#FF2FD0]" fill="currentColor" />
+              <Square className="w-5 h-5 text-[#ec4899]" fill="currentColor" />
             ) : pendingVoice ? (
-              <Check className="w-6 h-6 text-[#39FF6A]" strokeWidth={2} />
+              <Check className="w-5 h-5 text-[#27d9f7]" strokeWidth={2.5} />
             ) : (
-              <svg className="w-7 h-7 text-[#6f9c72] group-hover:text-[#39FF6A] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-              </svg>
+              <Mic className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
             )}
             {isRecording && (
               <div className="relative w-1.5 h-1.5">
-                <span className="rift-rec-pulse absolute inset-0 rounded-full bg-[#FF2FD0]" />
-                <div className="absolute inset-0 rounded-full bg-[#FF2FD0]" />
+                <span className="animate-ping absolute inset-0 rounded-full bg-[#ec4899]" />
+                <div className="absolute inset-0 rounded-full bg-[#ec4899]" />
               </div>
             )}
           </div>
-          <span className="text-[8px] tracking-wide text-center leading-tight"
-            style={{ color: isRecording ? '#FF2FD0' : pendingVoice ? '#39FF6A' : '#6f9c72' }}>
-            Голосовое<br/>сообщение
+          <span
+            className="text-[10px] font-semibold tracking-wide text-center leading-tight transition-colors"
+            style={{ color: isRecording ? '#ec4899' : pendingVoice ? '#27d9f7' : '#859397' }}
+          >
+            Голосовое
           </span>
         </button>
 
-        {/* Отправить — правая. Yozilgan ovoz bo'lsa shu tugma studiyaga
-            yuboradi (matn modalini o'rniga). */}
+        {/* Отправить — правая */}
         <button
           onClick={handleSendToStudio}
-          className="flex flex-col items-center gap-2 group flex-1"
+          className="flex flex-col items-center gap-1.5 group flex-1"
         >
           <div
-            className="w-full h-[58px] rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95"
+            className="w-full h-[62px] rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95 group-hover:border-[#27d9f7]/40"
             style={{
-              background: pendingVoice ? 'rgba(57,255,106,0.13)' : 'rgba(10,15,12,0.8)',
-              border: pendingVoice ? '1px solid rgba(57,255,106,0.4)' : '1px solid rgba(200,255,203,0.14)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+              background: pendingVoice ? 'rgba(39, 217, 247, 0.22)' : 'rgba(21, 26, 38, 0.65)',
+              backdropFilter: 'blur(16px)',
+              border: pendingVoice ? '1px solid rgba(39, 217, 247, 0.6)' : '1px solid rgba(39, 217, 247, 0.2)',
+              boxShadow: pendingVoice
+                ? '0 0 20px rgba(39, 217, 247, 0.4)'
+                : '0 4px 20px rgba(0, 0, 0, 0.35)',
             }}
           >
-            <Send className={`w-5 h-5 transition-colors ${pendingVoice ? 'text-[#39FF6A]' : 'text-[#6f9c72] group-hover:text-[#39FF6A]'}`} strokeWidth={1.8} />
+            <Send
+              className={`w-5 h-5 transition-colors ${
+                pendingVoice ? 'text-[#27d9f7]' : 'text-[#859397] group-hover:text-[#27d9f7]'
+              }`}
+              strokeWidth={1.8}
+            />
           </div>
-          <span className="text-[8px] tracking-wide text-center leading-tight"
-            style={{ color: pendingVoice ? '#39FF6A' : '#6f9c72' }}>
+          <span
+            className="text-[10px] font-semibold tracking-wide text-center leading-tight transition-colors"
+            style={{ color: pendingVoice ? '#27d9f7' : '#859397' }}
+          >
             Отправить
           </span>
         </button>
       </div>
 
-      {/* ── ПОТОК REAL TIME кнопка (иконка для второго экрана) ── */}
+      {/* ── КНОПКИ ДЕЙСТВИЙ (Кастинг / Статистика потока) ── */}
       <div className="px-4 pb-2">
-        {/* 🔴 LIVE tugmasi — faqat admin/doverenniy uchun, qolganlarga kasting taklifi */}
+        {/* 🔴 LIVE tugmasi — faqat admin/doverenniy uchun */}
         {(user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'doverenniy') ? (
-          <div className="mb-2">
+          <div className="mb-2.5">
             <GoLiveButton
               isLive={isLive}
               remainingSec={liveRemainingSec}
@@ -673,32 +690,47 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
         ) : (
           <button
             onClick={() => onNavigate?.('casting')}
-            className="w-full mb-2 py-3 rounded-2xl font-semibold text-sm tracking-wide flex items-center justify-center gap-2 glass active:scale-[0.97] transition-all"
-            style={{ color: '#C8FFCB' }}
+            className="w-full mb-2.5 py-3.5 rounded-2xl font-bold text-sm tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            style={{
+              background: 'linear-gradient(135deg, rgba(39,217,247,0.15) 0%, rgba(5,154,240,0.1) 100%)',
+              border: '1px solid rgba(39, 217, 247, 0.3)',
+              color: '#c2f3ff',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+            }}
           >
-            <Sparkles className="w-4 h-4 text-[#39FF6A]" strokeWidth={1.8} />
+            <Sparkles className="w-4 h-4 text-[#27d9f7]" strokeWidth={2} />
             Пройти кастинг — стать ведущим
           </button>
         )}
         <button
           onClick={() => setShowStreamModal(true)}
-          className="w-full glass rounded-2xl px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-transform"
+          className="w-full rounded-2xl px-4 py-3.5 flex items-center justify-between active:scale-[0.98] transition-transform"
+          style={{
+            background: 'rgba(15, 19, 30, 0.65)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(39, 217, 247, 0.18)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+          }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(200,255,203,0.1)' }}>
-              <Activity className="w-4 h-4 text-[#6f9c72]" strokeWidth={2} />
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(39, 217, 247, 0.12)', border: '1px solid rgba(39, 217, 247, 0.25)' }}
+            >
+              <Activity className="w-4 h-4 text-[#27d9f7]" strokeWidth={2} />
             </div>
-            <div>
-              <div className="text-[10px] font-bold tracking-[2px] text-[#C8FFCB] uppercase">Поток Real Time</div>
-              <div className="text-[9px] text-[#6f9c72]">Статистика потока</div>
+            <div className="text-left">
+              <div className="text-[11px] font-bold tracking-[2px] text-[#dfe2f1] uppercase font-['Sora']">
+                Поток Real Time
+              </div>
+              <div className="text-[10px] text-[#859397]">Статистика потока</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-[#6f9c72]" />
-            <span className="text-[10px] text-[#6f9c72]">{radioStatus?.listeners_count || 0}</span>
-            <svg className="w-4 h-4 text-[#6f9c72]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+            <Users className="w-3.5 h-3.5 text-[#27d9f7]" />
+            <span className="text-xs font-mono font-bold text-[#dfe2f1]">{radioStatus?.listeners_count || 0}</span>
+            <svg className="w-4 h-4 text-[#859397]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </button>
@@ -706,12 +738,12 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
 
       {/* ── OFFLINE ── */}
       {!isOnline && (
-        <div className="mx-4 glass rounded-xl p-2 mb-2"
-          style={{ background: 'rgba(255,47,208,0.1)', border: '1px solid rgba(255,47,208,0.3)' }}>
-          <div className="flex items-center justify-center gap-2 text-xs text-[#FF2FD0]">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#FF2FD0] animate-pulse" />
-            <span>Нет соединения</span>
-          </div>
+        <div
+          className="mx-4 rounded-xl p-2.5 mb-2 flex items-center justify-center gap-2 text-xs text-[#ef4444]"
+          style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+        >
+          <div className="w-2 h-2 rounded-full bg-[#ef4444] animate-ping" />
+          <span>Нет соединения с сервером</span>
         </div>
       )}
 
@@ -810,42 +842,36 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             </div>
 
             {/* 3 buttons */}
-            <div className="flex items-end justify-around gap-3 mb-5">
+            <div className="flex items-center justify-around gap-3 mb-5">
               <button onClick={() => { setShowStreamModal(false); openChat(); }}
-                className="flex flex-col items-center gap-2 flex-1">
-                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(10,15,12,0.8)', border: '1px solid rgba(200,255,203,0.14)' }}>
-                  <Coffee className="w-5 h-5 text-[#6f9c72]" strokeWidth={1.8} />
+                className="flex flex-col items-center gap-1.5 flex-1 group">
+                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-95"
+                  style={{ background: 'rgba(21, 26, 38, 0.7)', border: '1px solid rgba(39, 217, 247, 0.2)' }}>
+                  <MessageSquare className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
                 </div>
-                <span className="text-[8px] text-[#6f9c72] tracking-wide text-center leading-tight">
-                  Чай<br/>сверхмощность
+                <span className="text-[10px] font-semibold text-[#859397] group-hover:text-[#dfe2f1] tracking-wide text-center leading-tight">
+                  Чат эфира
                 </span>
               </button>
 
               <button onClick={() => { setShowStreamModal(false); handleVoiceMessage(); }}
-                className="flex flex-col items-center gap-2" style={{ flex: '1.4' }}>
-                <div className="w-full h-[72px] rounded-2xl flex items-center justify-center"
-                  style={{
-                    background: 'rgba(10,15,12,0.8)',
-                    border: '1px solid rgba(200,255,203,0.16)',
-                  }}>
-                  <svg className="w-7 h-7 text-[#6f9c72]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-                  </svg>
+                className="flex flex-col items-center gap-1.5 flex-1 group">
+                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-95"
+                  style={{ background: 'rgba(21, 26, 38, 0.7)', border: '1px solid rgba(39, 217, 247, 0.2)' }}>
+                  <Mic className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
                 </div>
-                <span className="text-[8px] text-[#6f9c72] tracking-wide text-center leading-tight">
-                  Голосовое<br/>сообщение
+                <span className="text-[10px] font-semibold text-[#859397] group-hover:text-[#dfe2f1] tracking-wide text-center leading-tight">
+                  Голосовое
                 </span>
               </button>
 
               <button onClick={() => { setShowStreamModal(false); handleSendToStudio(); }}
-                className="flex flex-col items-center gap-2 flex-1">
-                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(10,15,12,0.8)', border: '1px solid rgba(200,255,203,0.14)' }}>
-                  <Send className="w-5 h-5 text-[#6f9c72]" strokeWidth={1.8} />
+                className="flex flex-col items-center gap-1.5 flex-1 group">
+                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-95"
+                  style={{ background: 'rgba(21, 26, 38, 0.7)', border: '1px solid rgba(39, 217, 247, 0.2)' }}>
+                  <Send className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
                 </div>
-                <span className="text-[8px] text-[#6f9c72] tracking-wide text-center leading-tight">
+                <span className="text-[10px] font-semibold text-[#859397] group-hover:text-[#dfe2f1] tracking-wide text-center leading-tight">
                   Отправить
                 </span>
               </button>
@@ -955,11 +981,11 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-16">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(200,255,203,0.08)', border: '1px solid rgba(200,255,203,0.12)' }}>
-                  <Coffee className="w-8 h-8 text-[#6f9c72]" strokeWidth={1.5} />
+                  style={{ background: 'rgba(39,217,247,0.08)', border: '1px solid rgba(39,217,247,0.2)' }}>
+                  <MessageSquare className="w-8 h-8 text-[#27d9f7]" strokeWidth={1.5} />
                 </div>
-                <p className="text-sm text-[#6f9c72]">Чат пуст</p>
-                <p className="text-xs text-[#6f9c72]/60 mt-1">Начните диалог</p>
+                <p className="text-sm font-semibold text-[#dfe2f1]">Чат пуст</p>
+                <p className="text-xs text-[#859397] mt-1">Начните диалог в прямом эфире</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">

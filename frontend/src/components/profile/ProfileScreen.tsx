@@ -444,17 +444,22 @@ function StitchAction({ icon: Icon, label, onClick }: { icon: LucideIcon; label:
 
 function ModalShell({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none" onClick={onClose}>
       <div
-        className="w-full max-w-[360px] max-h-[85vh] glass rounded-3xl p-5 bg-[#FFFFFF] flex flex-col"
+        className="w-full max-w-[390px] max-h-[88vh] rounded-3xl p-5 flex flex-col shadow-[0_15px_40px_rgba(0,0,0,0.7)]"
+        style={{
+          background: 'rgba(15, 19, 30, 0.95)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(39, 217, 247, 0.25)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-          <h3 className="text-base font-bold text-[#E0263A]">{title}</h3>
+        <div className="flex items-center justify-between gap-3 mb-4 shrink-0 border-b border-white/5 pb-3">
+          <h3 className="text-base font-bold text-[#c2f3ff] font-['Sora'] tracking-wide">{title}</h3>
           <button
             onClick={onClose}
             aria-label="Закрыть"
-            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-[rgba(255,255,255,0.06)] text-[#6b5f4f] active:scale-90 transition-transform"
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/5 text-[#859397] hover:text-[#dfe2f1] active:scale-90 transition-transform"
           >
             <X size={16} />
           </button>
@@ -465,9 +470,9 @@ function ModalShell({ title, children, onClose }: { title: string; children: Rea
   );
 }
 
-const inputCls = 'w-full bg-[rgba(255,251,240,0.7)] border border-[rgba(26,19,16,0.16)] rounded-xl px-4 py-3 text-sm text-[#1A1310] outline-none focus:border-[#E0263A] mb-3';
-const primaryBtn = 'w-full py-3 rounded-xl font-bold text-[#FFFBF0] text-sm';
-const primaryStyle = { background: 'linear-gradient(135deg, #ff4f63, #E0263A)' };
+const inputCls = 'w-full bg-[rgba(10,14,24,0.7)] border border-[rgba(39,217,247,0.22)] rounded-xl px-4 py-3 text-sm text-[#dfe2f1] outline-none focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.3)] mb-3';
+const primaryBtn = 'w-full py-3.5 rounded-xl font-bold text-[#060a14] text-sm tracking-wide transition-all active:scale-[0.98]';
+const primaryStyle = { background: 'linear-gradient(135deg, #c2f3ff 0%, #27d9f7 60%, #059af0 100%)', boxShadow: '0 0 20px rgba(39, 217, 247, 0.4)' };
 type TX = (k: string) => string;
 
 function EditModal({ user, tx, onClose, onSaved, onError }: { user: User; tx: TX; onClose: () => void; onSaved: () => void; onError: () => void }) {
@@ -632,13 +637,13 @@ function BuyModal({ tx, packages, onClose, onDone, onError }: {
   return (
     <ModalShell title={tx('buy')} onClose={onClose}>
       {showTabs && (
-        <div className="flex gap-2 mb-3 p-1 rounded-xl" style={{ background: 'rgba(26,19,16,0.06)' }}>
+        <div className="flex gap-2 mb-4 p-1.5 rounded-2xl bg-[rgba(10,14,24,0.7)] border border-white/5">
           {(['stars', 'manual'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeMode === m ? 'text-[#FFFBF0]' : 'text-[#6b5f4f]'
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeMode === m ? 'text-[#060a14]' : 'text-[#859397]'
               }`}
               style={activeMode === m ? primaryStyle : undefined}
             >
@@ -651,14 +656,14 @@ function BuyModal({ tx, packages, onClose, onDone, onError }: {
       {/* ─── Stars: avtomatik to'lov bot orqali ─── */}
       {activeMode === 'stars' && (
         <>
-          <p className="text-xs text-[#6b5f4f] mb-3 leading-relaxed">{tx('buy_stars_intro')}</p>
-          <div className="flex flex-col gap-2 mb-3">
+          <p className="text-xs text-[#859397] mb-3 leading-relaxed">{tx('buy_stars_intro')}</p>
+          <div className="flex flex-col gap-2 mb-4">
             {packages.map((p) => (
               <button key={p.id}
                 onClick={() => buyViaBot(p.id)}
-                className="flex items-center justify-between px-4 py-3 rounded-xl border border-[rgba(26,19,16,0.16)] bg-[rgba(255,251,240,0.5)] active:scale-[0.98] transition-transform">
-                <span className="font-semibold text-[#1A1310]">{p.label}</span>
-                <span className="text-[#E0263A] font-bold">⭐{p.price_stars}</span>
+                className="flex items-center justify-between px-4 py-3.5 rounded-2xl border border-white/5 bg-[rgba(21,26,38,0.6)] active:scale-[0.98] transition-all hover:border-[#27d9f7]/30">
+                <span className="font-semibold text-[#dfe2f1]">{p.label}</span>
+                <span className="text-[#f59e0b] font-bold">⭐ {p.price_stars}</span>
               </button>
             ))}
           </div>
@@ -666,8 +671,8 @@ function BuyModal({ tx, packages, onClose, onDone, onError }: {
             {tx('buy')} →
           </button>
           {payment.instructions && (
-            <div className="mt-3 rounded-xl px-4 py-3 text-xs text-[#1A1310] whitespace-pre-line"
-              style={{ background: 'rgba(26,19,16,0.06)', border: '1px solid rgba(26,19,16,0.14)' }}>
+            <div className="mt-3 rounded-2xl px-4 py-3 text-xs text-[#dfe2f1] whitespace-pre-line"
+              style={{ background: 'rgba(10,14,24,0.6)', border: '1px solid rgba(39,217,247,0.18)' }}>
               {payment.instructions}
             </div>
           )}
@@ -679,84 +684,84 @@ function BuyModal({ tx, packages, onClose, onDone, onError }: {
         <>
           {pending ? (
             /* Kutilayotgan ariza bor — yangi yubora olmaydi */
-            <div className="rounded-xl p-4 mb-3" style={{ background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.4)' }}>
+            <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}>
               <div className="flex items-center gap-2 mb-2">
-                <Clock size={16} className="text-[#b8860b]" />
-                <span className="text-sm font-bold text-[#1A1310]">{tx('manual_pending_title')}</span>
+                <Clock size={16} className="text-[#f59e0b]" />
+                <span className="text-sm font-bold text-[#fef3c7]">{tx('manual_pending_title')}</span>
               </div>
-              <div className="text-xs text-[#6b5f4f] mb-1">
+              <div className="text-xs text-[#d1d5db] mb-1">
                 {pending.package_label} · {Number(pending.points_amount).toFixed(0)} pts · €{Number(pending.price_eur).toFixed(2)}
               </div>
               {pending.payment_note && (
-                <div className="text-[11px] text-[#6b5f4f] mb-2 whitespace-pre-line">{pending.payment_note}</div>
+                <div className="text-[11px] text-[#9ca3af] mb-3 whitespace-pre-line">{pending.payment_note}</div>
               )}
               <button
                 onClick={() => cancelPending(pending.id)}
                 disabled={busy}
-                className="w-full mt-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'rgba(224,38,58,0.12)', color: '#E0263A' }}
+                className="w-full mt-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all"
+                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
               >
                 <Trash2 size={14} /> {tx('manual_cancel')}
               </button>
             </div>
           ) : (
             <>
-              <p className="text-xs text-[#6b5f4f] mb-3 leading-relaxed">{tx('manual_intro')}</p>
+              <p className="text-xs text-[#859397] mb-3 leading-relaxed">{tx('manual_intro')}</p>
 
               {/* Admin rekvizitlari */}
-              <div className="text-[10px] text-[#6b5f4f] uppercase tracking-wide mb-1.5">{tx('manual_details_title')}</div>
-              <div className="rounded-xl px-4 py-3 mb-3 text-sm text-[#1A1310] whitespace-pre-line"
-                style={{ background: 'rgba(26,19,16,0.06)', border: '1px solid rgba(26,19,16,0.14)' }}>
+              <div className="text-[10px] text-[#859397] uppercase tracking-wide mb-1.5 font-['Sora']">{tx('manual_details_title')}</div>
+              <div className="rounded-2xl px-4 py-3 mb-3 text-sm text-[#dfe2f1] whitespace-pre-line"
+                style={{ background: 'rgba(10,14,24,0.65)', border: '1px solid rgba(39,217,247,0.2)' }}>
                 {payment.manual_details || payment.instructions || (
-                  <span className="text-[#6b5f4f] text-xs">{tx('manual_no_details')}</span>
+                  <span className="text-[#859397] text-xs">{tx('manual_no_details')}</span>
                 )}
               </div>
 
               {/* Paket tanlash */}
-              <div className="text-[10px] text-[#6b5f4f] uppercase tracking-wide mb-1.5">{tx('manual_select_pkg')}</div>
+              <div className="text-[10px] text-[#859397] uppercase tracking-wide mb-1.5 font-['Sora']">{tx('manual_select_pkg')}</div>
               <div className="flex flex-col gap-2 mb-3">
                 {packages.map((p) => (
                   <button key={p.id}
                     onClick={() => setPkgId(p.id)}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border active:scale-[0.98] transition-transform"
+                    className="flex items-center justify-between px-4 py-3 rounded-2xl border active:scale-[0.98] transition-all"
                     style={pkgId === p.id
-                      ? { borderColor: '#E0263A', background: 'rgba(224,38,58,0.1)' }
-                      : { borderColor: 'rgba(26,19,16,0.16)', background: 'rgba(255,251,240,0.5)' }}>
-                    <span className="font-semibold text-[#1A1310]">{p.label}</span>
-                    <span className="text-[#E0263A] font-bold">€{Number(p.price_eur).toFixed(2)}</span>
+                      ? { borderColor: '#27d9f7', background: 'rgba(39,217,247,0.15)', boxShadow: '0 0 15px rgba(39,217,247,0.25)' }
+                      : { borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(21,26,38,0.6)' }}>
+                    <span className="font-semibold text-[#dfe2f1]">{p.label}</span>
+                    <span className="text-[#27d9f7] font-bold">€{Number(p.price_eur).toFixed(2)}</span>
                   </button>
                 ))}
               </div>
 
               {/* To'lov usuli */}
-              <div className="text-[10px] text-[#6b5f4f] uppercase tracking-wide mb-1.5">{tx('manual_method')}</div>
+              <div className="text-[10px] text-[#859397] uppercase tracking-wide mb-1.5 font-['Sora']">{tx('manual_method')}</div>
               <div className="flex flex-wrap gap-2 mb-3">
                 {MANUAL_METHODS.map((m) => (
                   <button key={m}
                     onClick={() => setMethod(m)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                     style={method === m
-                      ? { borderColor: '#E0263A', background: 'rgba(224,38,58,0.12)', color: '#E0263A' }
-                      : { borderColor: 'rgba(26,19,16,0.16)', color: '#6b5f4f' }}>
+                      ? { borderColor: '#27d9f7', background: 'rgba(39,217,247,0.18)', color: '#c2f3ff' }
+                      : { borderColor: 'rgba(255,255,255,0.08)', color: '#859397', background: 'rgba(21,26,38,0.5)' }}>
                     {tx(`manual_${m}`)}
                   </button>
                 ))}
               </div>
 
               {/* Izoh */}
-              <label className="text-[10px] text-[#6b5f4f] uppercase tracking-wide">{tx('manual_note')}</label>
+              <label className="text-[10px] text-[#859397] uppercase tracking-wide font-['Sora']">{tx('manual_note')}</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={tx('manual_note_ph')}
                 rows={3}
                 maxLength={1000}
-                className="w-full mt-1.5 mb-3 rounded-xl px-4 py-3 text-sm text-[#1A1310] outline-none resize-none focus:border-[#E0263A]"
-                style={{ background: 'rgba(255,251,240,0.7)', border: '1px solid rgba(26,19,16,0.16)' }}
+                className="w-full mt-1.5 mb-3 rounded-xl px-4 py-3 text-sm text-[#dfe2f1] outline-none resize-none focus:border-[#27d9f7] focus:shadow-[0_0_12px_rgba(39,217,247,0.3)] transition-all"
+                style={{ background: 'rgba(10,14,24,0.7)', border: '1px solid rgba(39,217,247,0.22)' }}
               />
 
               <button
-                className={`${primaryBtn} disabled:opacity-50`}
+                className={`${primaryBtn} disabled:opacity-40`}
                 style={primaryStyle}
                 onClick={submitManual}
                 disabled={busy || !pkgId || !note.trim()}
@@ -769,7 +774,7 @@ function BuyModal({ tx, packages, onClose, onDone, onError }: {
           {/* Arizalar tarixi */}
           {myPayments.filter((p) => p.status !== 'pending').length > 0 && (
             <div className="mt-4">
-              <div className="text-[10px] text-[#6b5f4f] uppercase tracking-wide mb-2">{tx('manual_history')}</div>
+              <div className="text-[10px] text-[#859397] uppercase tracking-wide mb-2 font-['Sora']">{tx('manual_history')}</div>
               <div className="flex flex-col gap-2">
                 {myPayments.filter((p) => p.status !== 'pending').map((p) => (
                   <ManualPaymentRow key={p.id} tx={tx} item={p} />

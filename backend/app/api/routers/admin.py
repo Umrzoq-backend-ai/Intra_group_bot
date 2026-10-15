@@ -176,21 +176,29 @@ async def delete_user(
     if user_id == admin["id"]:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
 
-    # Admin o'zini o'chirishga urinayotganini bir karra tekshiramiz (telegram_id bo'yicha ham)
     target = await db.fetchrow("SELECT id, role, telegram_id FROM users WHERE id = $1", user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Boshqa adminni o'chirishdan himoya — faqat o'zi o'zini (yuqorida rad etilgan)
-    # yoki superadmin (ADMIN_IDS) boshqasini o'chira oladi. Oddiy admin boshqa
-    # adminni o'chira olmaydi.
     from app.core.config import settings
-    if target["role"] == "admin" and target["telegram_id"] not in settings.admin_ids_set:
-        raise HTTPException(status_code=403, detail="Cannot delete another admin")
+    # Superadmin (ADMIN_IDS) foydalanuvchisini hech kim o'chira olmaydi
+    if target["telegram_id"] in settings.admin_ids_set:
+        raise HTTPException(status_code=403, detail="Cannot delete superadmin")
 
-    result = await db.execute("DELETE FROM users WHERE id = $1", user_id)
-    if result.endswith("0"):
-        raise HTTPException(status_code=404, detail="User not found")
+    # Oddiy admin boshqa adminni o'chira olmaydi (faqat ADMIN_IDS dagi superadmin qila oladi)
+    if target["role"] == "admin" and admin["telegram_id"] not in settings.admin_ids_set:
+        raise HTTPException(status_code=403, detail="Only superadmin can delete an admin")
+
+    async with db.pool.acquire() as conn:
+        async with conn.transaction():
+            # Cascade qo'yilmagan jadvallarni tozalab ketamiz
+            await conn.execute("UPDATE topics SET created_by = NULL WHERE created_by = $1", user_id)
+            await conn.execute("UPDATE broadcast_slots SET created_by = NULL WHERE created_by = $1", user_id)
+            await conn.execute("UPDATE broadcast_slots SET host_user_id = NULL WHERE host_user_id = $1", user_id)
+            await conn.execute("DELETE FROM opinions WHERE user_id = $1", user_id)
+            result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+            if result.endswith("0"):
+                raise HTTPException(status_code=404, detail="User not found")
 
     log.info(
         "Admin %d deleted user id=%d (tg_id=%d, role=%s)",

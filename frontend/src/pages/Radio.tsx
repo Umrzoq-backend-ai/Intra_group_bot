@@ -344,44 +344,49 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
 
   return (
     <div
-      className="bg-[var(--bg)] text-[var(--text)] flex flex-col relative"
-      style={{ height: 'var(--app-vh)', overflow: 'hidden' }}
+      className="bg-[#060a14] text-[var(--text)] flex flex-col justify-center items-center relative min-h-screen selection:bg-[rgba(39,217,247,0.2)] selection:text-[#c2f3ff]"
+      style={{ minHeight: 'var(--app-vh)' }}
     >
-      {/* Background ambient */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(0,240,192,0.07)_0%,transparent_70%)]" />
+      {/* Background ambient neon glow */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(39,217,247,0.12)_0%,rgba(5,154,240,0.05)_45%,transparent_75%)]" />
+        <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.08)_0%,transparent_70%)]" />
       </div>
 
-      {/* Asosiy scroll container — mouse wheel + touch ikkalasi ishlaydi */}
+      {/* Main app chassis — on mobile full width, on desktop elegant framed console */}
       <div
-        ref={scrollRef}
-        className="relative z-10 flex-1"
-        style={{
-          overflowY: isChat ? 'hidden' : 'auto',
-          overflowX: 'hidden',
-          WebkitOverflowScrolling: 'touch',
-          /* scrollbar ko'rinmaydi lekin ishlaydi */
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
+        className="w-full max-w-[440px] sm:max-w-[460px] h-full sm:h-[94vh] sm:max-h-[920px] sm:my-auto sm:rounded-[36px] sm:border sm:border-[rgba(39,217,247,0.22)] sm:shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(39,217,247,0.15)] bg-[#060a14]/90 backdrop-blur-2xl flex flex-col relative z-10 overflow-hidden"
+        style={{ height: 'var(--app-vh)' }}
       >
+        {/* Asosiy scroll container — mouse wheel + touch ikkalasi ishlaydi */}
         <div
-          className={`w-full max-w-[460px] sm:max-w-[480px] lg:max-w-[520px] mx-auto flex flex-col gap-4 ${
-            isChat ? 'h-full pb-[86px]' : 'px-4 pt-3 pb-[170px]'
-          }`}
+          ref={scrollRef}
+          className="relative z-10 flex-1"
+          style={{
+            overflowY: isChat ? 'hidden' : 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
-          {/* Chat ekranida TopBar (logo + points) yashiriladi — Efir'dagi
-              "ЧАЙ СВЕРХМОЩНОСТЬ" chat'i kabi toza, sarlavhasiz ko'rinish. */}
-          {!isChat && <TopBar points={user?.points || 0} />}
-          {isChat ? (
-            <div className="flex-1 min-h-0 flex flex-col">{renderScreen(currentScreen)}</div>
-          ) : (
-            renderScreen(currentScreen)
-          )}
+          <div
+            className={`w-full mx-auto flex flex-col gap-4 ${
+              isChat ? 'h-full pb-[86px]' : 'px-4 pt-3 pb-[170px]'
+            }`}
+          >
+            {/* Chat ekranida TopBar (logo + points) yashiriladi */}
+            {!isChat && <TopBar points={user?.points || 0} />}
+            {isChat ? (
+              <div className="flex-1 min-h-0 flex flex-col">{renderScreen(currentScreen)}</div>
+            ) : (
+              renderScreen(currentScreen)
+            )}
+          </div>
         </div>
-      </div>
 
-      <BottomNav currentScreen={currentScreen} onNavigate={handleNavigate} profileBadgeCount={pendingCastingCount} />
+        <BottomNav currentScreen={currentScreen} onNavigate={handleNavigate} profileBadgeCount={pendingCastingCount} />
+      </div>
       <OnboardingModal isOpen={showOnboarding} onClose={handleCloseOnboarding} />
       {/* Oddiy tost App.tsx darajasida (global, Router'dan tashqarida)
           ko'rsatiladi — shu yerda alohida emas, ikkitasi ustma-ust

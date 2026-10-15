@@ -4,8 +4,6 @@ import type { Screen } from '../../types';
 interface BottomNavProps {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
-  // Profil tugmasi ustidagi значok — masalan ko'rib chiqilmagan kasting
-  // arizalari soni (faqat haqiqiy admin uchun beriladi, boshqalarda 0).
   profileBadgeCount?: number;
 }
 
@@ -18,7 +16,7 @@ const ICONS: Record<string, typeof MessageCircle> = {
 };
 
 export function BottomNav({ currentScreen, onNavigate, profileBadgeCount = 0 }: BottomNavProps) {
-  // Stitch dizayni: chat | podcasts | [ORB] | spatial_audio | person
+  // Stitch modernized: Chat | Stats | [LIVE ORB] | Music | Profile
   const navItems: { id: Screen; icon: string; isCenter?: boolean }[] = [
     { id: 'anons', icon: 'chat' },
     { id: 'stats', icon: 'show_chart' },
@@ -28,25 +26,23 @@ export function BottomNav({ currentScreen, onNavigate, profileBadgeCount = 0 }: 
   ];
 
   return (
-    <nav className="rift-zone-u5 fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none select-none">
       <div
-        className="pointer-events-auto max-w-[460px] sm:max-w-[480px] lg:max-w-[520px] mx-auto px-4 pt-2"
+        className="pointer-events-auto max-w-[460px] sm:max-w-[480px] lg:max-w-[520px] mx-auto px-4 pt-1"
         style={{
-          background: 'linear-gradient(180deg, transparent 0%, rgba(13,13,16,0.92) 30%, rgba(13,13,16,0.99) 100%)',
-          // Android jismoniy "Kнопки" navigatsiya paneli bilan
-          // to'qnashmasin — Telegram native ilova bergan --tg-safe-bottom
-          // (ishonchliroq) va brauzerning o'z env(safe-area-inset-bottom)
-          // ikkalasidan kattarog'i olinadi.
-          paddingBottom: 'calc(6px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px)))',
+          background: 'linear-gradient(180deg, transparent 0%, rgba(6, 10, 20, 0.85) 35%, rgba(6, 10, 20, 0.98) 100%)',
+          paddingBottom: 'calc(10px + max(env(safe-area-inset-bottom), var(--tg-safe-bottom, 0px)))',
         }}
       >
         <div
-          className="flex justify-around items-center h-[60px] px-2.5 relative"
+          className="flex justify-around items-center h-[64px] px-3 relative"
           style={{
-            background: 'rgba(13,13,16,0.94)',
-            border: '2px solid rgba(0,240,192,0.3)',
-            borderRadius: '10px',
-            boxShadow: '3px 3px 0 rgba(0,0,0,0.4), 0 -4px 20px rgba(0,0,0,0.5)',
+            background: 'rgba(15, 19, 30, 0.75)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(39, 217, 247, 0.22)',
+            borderRadius: '22px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
         >
           {navItems.map((item) => {
@@ -58,14 +54,25 @@ export function BottomNav({ currentScreen, onNavigate, profileBadgeCount = 0 }: 
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className="relative -translate-y-4 active:scale-90 transition-transform duration-150"
+                  className="relative -translate-y-4 active:scale-90 transition-transform duration-200"
                   aria-label="efir"
                 >
-                  {/* Aylanuvchi tashqi halqa */}
-                  <span className="orb-ring" />
-                  {/* Asosiy orb + ichida radio ikonka */}
-                  <div className={`orb-nav ${isActive ? 'orb-active' : ''}`}>
-                    <Icon size={21} fill="currentColor" strokeWidth={1.5} />
+                  {/* Subtle outer breathing ring */}
+                  <span
+                    className="absolute -inset-1.5 rounded-full animate-ping opacity-25 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #27d9f7 0%, transparent 70%)' }}
+                  />
+                  {/* Modernized Central Glowing Orb */}
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-[#060a14] transition-all duration-300"
+                    style={{
+                      background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #c2f3ff 20%, #27d9f7 65%, #059af0 100%)',
+                      boxShadow: isActive
+                        ? '0 0 25px rgba(39, 217, 247, 0.9), 0 0 45px rgba(5, 154, 240, 0.5)'
+                        : '0 0 18px rgba(39, 217, 247, 0.6), 0 0 35px rgba(5, 154, 240, 0.3)',
+                    }}
+                  >
+                    <Icon size={24} className="text-[#060a14]" strokeWidth={2.4} />
                   </div>
                 </button>
               );
@@ -75,21 +82,19 @@ export function BottomNav({ currentScreen, onNavigate, profileBadgeCount = 0 }: 
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className="relative flex items-center justify-center w-10 h-10 transition-all duration-200 active:scale-90"
+                className="relative flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 active:scale-90"
                 style={{
-                  color: isActive ? '#001a14' : '#9a9a9a',
-                  background: isActive ? '#00F0C0' : 'rgba(0,240,192,0.06)',
-                  border: isActive ? '2px solid #EDEDED' : '1px solid rgba(0,240,192,0.18)',
-                  borderRadius: isActive ? '8px' : '6px',
-                  boxShadow: isActive ? '2px 2px 0 rgba(0,0,0,0.35)' : 'none',
-                  transform: isActive ? 'rotate(-2deg) scale(1.05)' : 'scale(1)',
+                  color: isActive ? '#27d9f7' : '#859397',
+                  background: isActive ? 'rgba(39, 217, 247, 0.12)' : 'transparent',
+                  border: isActive ? '1px solid rgba(39, 217, 247, 0.35)' : '1px solid transparent',
+                  boxShadow: isActive ? '0 0 12px rgba(39, 217, 247, 0.2)' : 'none',
                 }}
               >
-                <Icon size={19} fill={isActive ? 'currentColor' : 'none'} strokeWidth={2} />
+                <Icon size={20} strokeWidth={isActive ? 2.3 : 1.8} />
                 {item.id === 'profile' && profileBadgeCount > 0 && (
                   <span
-                    className="absolute top-0 right-0.5 min-w-[16px] h-[16px] px-[3px] rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
-                    style={{ background: '#FF3B5C', boxShadow: '0 0 0 2px #0d0d10' }}
+                    className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-[3px] rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
+                    style={{ background: '#ef4444', boxShadow: '0 0 0 2px #0f131e' }}
                   >
                     {profileBadgeCount > 9 ? '9+' : profileBadgeCount}
                   </span>
