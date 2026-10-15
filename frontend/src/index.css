@@ -58,33 +58,33 @@
     --secondary-blue: #059af0;
   }
 
-  /* ── U1 — 90s-комикс: Эфир ── */
+  /* ── U1 — Dark Obsidian Glass ── */
   .rift-zone-u1 {
-    --bg: #F5EEDC;
-    --bg2: #efe4c8;
-    --card: #FFFBF0;
-    --card-solid: #FFFBF0;
-    --card-soft: rgba(255, 251, 240, 0.9);
-    --border: rgba(26, 19, 16, 0.2);
-    --glass-border: rgba(26, 19, 16, 0.2);
-    --icon-muted: #8a7b63;
-    --primary: #1C3FD6;
-    --primary2: #1531ab;
-    --accent: #E0263A;
-    --accent2: #b81d2e;
-    --accent-light: #ff4f63;
-    --glow: rgba(224, 38, 58, 0.3);
-    --accent-glow: rgba(224, 38, 58, 0.3);
-    --live: #1C3FD6;
-    --green: #1C3FD6;
-    --danger: #E0263A;
-    --ai: #1C3FD6;
-    --text: #1A1310;
-    --muted: #6b5f4f;
-    --halftone-blend: multiply;
-    --zone-font-display: 'Bangers', cursive;
+    --bg: transparent;
+    --bg2: #0f131e;
+    --card: rgba(15, 19, 30, 0.75);
+    --card-solid: #0f131e;
+    --card-soft: rgba(15, 19, 30, 0.65);
+    --border: rgba(39, 217, 247, 0.18);
+    --glass-border: rgba(39, 217, 247, 0.18);
+    --icon-muted: #859397;
+    --primary: #27d9f7;
+    --primary2: #059af0;
+    --accent: #27d9f7;
+    --accent2: #059af0;
+    --accent-light: #c2f3ff;
+    --glow: rgba(39, 217, 247, 0.35);
+    --accent-glow: rgba(39, 217, 247, 0.35);
+    --live: #27d9f7;
+    --green: #27d9f7;
+    --danger: #ef4444;
+    --ai: #27d9f7;
+    --text: #dfe2f1;
+    --muted: #859397;
+    --halftone-blend: overlay;
+    --zone-font-display: 'Sora', sans-serif;
     --zone-font-body: system-ui, sans-serif;
-    background: var(--bg);
+    background: transparent;
     color: var(--text);
     font-family: var(--zone-font-body);
   }
@@ -338,27 +338,18 @@
      / boom / diagonal — переиспользуемые "инструменты" вселенных.
      ============================================================ */
 
-  /* Halftone-растр — накладывается на карточки/фоны, цвет и blend-mode
-     берутся из текущей зоны. */
+  /* Halftone-растр — накладывается на карточки/фоны */
   .rift-halftone {
     position: relative;
   }
   .rift-halftone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle, var(--accent) 1.2px, transparent 1.2px);
-    background-size: 8px 8px;
-    opacity: 0.16;
-    mix-blend-mode: var(--halftone-blend);
-    pointer-events: none;
-    border-radius: inherit;
+    display: none;
   }
 
-  /* 3 варианта "рваного" края — чередовать вручную по карточкам */
-  .rift-torn-a { clip-path: polygon(0% 2%, 3% 0%, 97% 1%, 100% 3%, 99% 97%, 96% 100%, 4% 99%, 1% 96%); }
-  .rift-torn-b { clip-path: polygon(1% 0%, 100% 2%, 98% 100%, 2% 98%, 0% 45%, 3% 4%); }
-  .rift-torn-c { clip-path: polygon(2% 3%, 98% 0%, 100% 96%, 4% 100%, 0% 40%, 1% 4%); }
+  /* 3 варианта "рваного" края */
+  .rift-torn-a { clip-path: none; }
+  .rift-torn-b { clip-path: none; }
+  .rift-torn-c { clip-path: none; }
 
   /* Наклейка — обводка + поворот, для ключевых слов */
   .rift-sticker {
@@ -610,19 +601,19 @@
 }
 
 .stitch-card {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  clip-path: polygon(0% 3%, 97% 0%, 100% 96%, 3% 100%);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.22);
+  background: rgba(15, 19, 30, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(39, 217, 247, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
 
 .stitch-card-bordered {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  clip-path: polygon(1% 4%, 96% 0%, 100% 95%, 4% 100%);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.22);
+  background: rgba(15, 19, 30, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(39, 217, 247, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
 
 .neon-glow-text {
