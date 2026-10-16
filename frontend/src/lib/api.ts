@@ -1,4 +1,4 @@
-import { API_URL } from './config';
+import { API_URL, RADIO_URL } from './config';
 import { authHeaders } from './auth';
 import type {
   User, RadioStatus, ChatMessage, Announcements, AudioSegment,
@@ -252,10 +252,14 @@ export async function getPlaylist(_city?: string): Promise<AudioSegment[]> {
   return [];
 }
 
-export function getStreamUrl(_lang: string, streamUrlFromStatus?: string | null): string {
-  // MediaMTX HLS endpoint publik — browser to'g'ridan ulanadi (hls.js/native),
-  // backend /radio/status orqali beradi (same-origin proksi endi kerak emas).
-  return streamUrlFromStatus || '';
+export function getStreamUrl(lang?: string, streamUrlFromStatus?: string | null): string {
+  const target = streamUrlFromStatus || `/radio/live/${lang || 'ru'}`;
+  if (target.startsWith('http://') || target.startsWith('https://')) {
+    return target;
+  }
+  const base = RADIO_URL || API_URL || '';
+  if (!base) return target;
+  return `${base.replace(/\/+$/, '')}/${target.replace(/^\/+/, '')}`;
 }
 
 // ============ Chat ============

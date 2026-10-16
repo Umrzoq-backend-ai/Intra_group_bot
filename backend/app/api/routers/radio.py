@@ -15,7 +15,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from app.core.config import settings
 from app.core.constants import ROLE_LEVELS
@@ -245,26 +245,25 @@ async def hls_proxy(path: str, request: Request):
     return resp
 
 
-@router.get("/live/{lang}")
-async def icecast_proxy(lang: str):
-    """Icecast oqimini backend orqali proksi qiladi (deyarli real vaqt).
-
-    Icecast xuddi MediaMTX kabi faqat ichki tarmoqda ishlaydi — klient shu
-    proksiga ulanadi, ichki manzil oshkor qilinmaydi.
-
-    Baytlar kelgan zahoti uzatiladi — sun'iy kechikish/bufer yo'q. Avval
-    ~6-8s qasddan kechikish sinab ko'rilgan edi (buferга yetarli bayt
-    yig'ilgunча klientga hech narsa yubormaslik), lekin bu mobil WebView'да
-    "play()" chaqirilgach bir necha soniya hech qanday bayt kelmasligiga olib
-    keldi — ba'zi pleyerlarning o'zining ichki stall-taймаути bizning JS
-    tarafdagi 12s kutishdan oldinroq ishga tushib, sukut bilan uzilib
-    qolishga sabab bo'lgan (xato ko'rsatilmasdan). Ishonchlilik ustunroq —
-    Icecast'ning tabiiy past kechikishi (~1-3s) bilan qoldirilgan.
-    """
+@router.api_route("/live/{lang}", methods=["GET", "HEAD"])
+async def icecast_proxy(lang: str, request: Request):
+    """Icecast oqimini backend orqali proksi qiladi (deyarli real vaqt)."""
     if lang not in BROADCAST_LANGS:
         raise HTTPException(status_code=404, detail="Unknown stream language")
     if not broadcast.USE_ICECAST:
         raise HTTPException(status_code=404, detail="Icecast disabled")
+
+    stream_headers = {
+        "Cache-Control": "no-cache, no-store",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",  # nginx/cloudflare buferingini o'chiradi
+        "X-Content-Type-Options": "nosniff",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    }
+    if request.method == "HEAD":
+        return Response(status_code=200, media_type="audio/mpeg", headers=stream_headers)
 
     upstream_url = f"http://{broadcast.ICECAST_HOST}:{settings.icecast_port}/live_{lang}"
 
@@ -300,6 +299,8 @@ async def icecast_proxy(lang: str):
             "X-Content-Type-Options": "nosniff",
             "Transfer-Encoding": "chunked",
             "icy-name": f"Radio AI {lang.upper()}",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
         },
     )
 
