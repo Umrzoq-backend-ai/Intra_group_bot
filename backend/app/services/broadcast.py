@@ -49,6 +49,7 @@ def _encode_args() -> list[str]:
     if USE_ICECAST:
         return [
             "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "44100", "-ac", "2",
+            "-flush_packets", "1",
             "-content_type", "audio/mpeg", "-f", "mp3",
         ]
     return [
@@ -87,12 +88,8 @@ class BroadcastSession:
         cmd = [
             _ffmpeg_bin(),
             "-hide_banner",
-            # -re: kirishni real vaqt tezligida o'qiydi. Icecast — oddiy bayt
-            # relay (HLS'dan farqli, segment timestamp'lariga qarab qayta
-            # sinxronlamaydi), shu sabab -re bo'lmasa ffmpeg tarmoqdan kelgan
-            # bo'laklarni imkon qadar tez qayta ishlab, oqimni soniyalarда
-            # "tugatib qo'yadi" — tinglovchi hech narsa ulgurmaydi eshitishga.
-            "-re",
+            "-fflags", "+nobuffer",
+            "-flags", "low_delay",
             "-i",
             "pipe:0",  # stdin'dan audio (FFmpeg auto-probes webm, ogg, mp4)
             *_encode_args(),

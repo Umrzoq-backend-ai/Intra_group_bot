@@ -77,6 +77,7 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
     // USE_ICECAST=true (server sozlamasi), radioStatus yuklanguncha ham true
     useIcecast: radioStatus?.use_icecast ?? true,
     useHls: radioStatus?.use_hls ?? false,
+    isLive: radioStatus?.is_live,
     // Backend proksi orqali (bir xil origin) — /radio/live/{lang} yoki /radio/hls/...
     streamUrl: radioStatus?.stream_url,
     onError: showToast,

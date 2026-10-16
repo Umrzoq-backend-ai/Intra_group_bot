@@ -104,11 +104,23 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
   const [showCallersModal, setShowCallersModal] = useState(false);
 
   useEffect(() => {
+    let timer: any;
     if (canGoLive) {
-      getLiveMicRequests(city).then(setPendingMicRequests).catch(() => {});
+      const poll = () => {
+        getLiveMicRequests(city).then(setPendingMicRequests).catch(() => {});
+      };
+      poll();
+      timer = setInterval(poll, 4000);
     } else {
-      getMyMicRequest(city).then((res) => setMyMicStatus(res.status)).catch(() => {});
+      const poll = () => {
+        getMyMicRequest(city).then((res) => setMyMicStatus(res.status)).catch(() => {});
+      };
+      poll();
+      timer = setInterval(poll, 3000);
     }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [city, canGoLive]);
 
   const handleRequestMic = async () => {

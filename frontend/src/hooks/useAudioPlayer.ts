@@ -8,11 +8,12 @@ interface UseAudioPlayerOptions {
   language: Language;
   useHls: boolean;
   useIcecast: boolean;
+  isLive?: boolean;
   streamUrl?: string | null;
   onError?: (message: string) => void;
 }
 
-export function useAudioPlayer({ city, language, useHls, useIcecast, streamUrl, onError }: UseAudioPlayerOptions) {
+export function useAudioPlayer({ city, language, useHls, useIcecast, isLive, streamUrl, onError }: UseAudioPlayerOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -274,6 +275,15 @@ export function useAudioPlayer({ city, language, useHls, useIcecast, streamUrl, 
     connect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
+
+  // Jonli efir boshlanganda — eski bufer/keshni tashlab, darhol live edge'ga ulanamiz
+  const prevIsLiveRef = useRef<boolean | undefined>(isLive);
+  useEffect(() => {
+    if (prevIsLiveRef.current === false && isLive === true && wantPlayingRef.current) {
+      connect();
+    }
+    prevIsLiveRef.current = isLive;
+  }, [isLive, connect]);
 
   // Volume
   useEffect(() => {
