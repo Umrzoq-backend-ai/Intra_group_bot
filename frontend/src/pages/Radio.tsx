@@ -43,7 +43,7 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
   // Radio har safar remount bo'lganda tab holati yo'qolib, doim 'anons'ga
   // tushib qolar edi.
   const location = useLocation();
-  const [currentScreen, setCurrentScreen] = useState<Screen>((location.state as { screen?: Screen } | null)?.screen || 'anons');
+  const [currentScreen, setCurrentScreen] = useState<Screen>((location.state as { screen?: Screen } | null)?.screen || 'efir');
   // Chat ekranida BottomNav yashiriladi va o'rniga yuqorida chiqish tugmasi
   // ko'rsatiladi — shu tugma bosilganda foydalanuvchi oxirgi tashrif
   // buyurgan (chatdan boshqa) ekranga qaytadi.
@@ -329,8 +329,16 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
         return <CastingScreen />;
       case 'profile':
         return <ProfileScreen user={user} onUserUpdate={setUser} />;
+      case 'anons':
       default:
-        return <ChatScreen user={user} onPointsUpdate={handlePointsUpdate} isLive={isLive} />;
+        return (
+          <ChatScreen
+            user={user}
+            onPointsUpdate={handlePointsUpdate}
+            onExit={() => handleNavigate(previousScreen || 'efir')}
+            isLive={isLive}
+          />
+        );
     }
   };
 

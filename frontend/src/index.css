@@ -282,11 +282,12 @@
      местах приложения. Лёгкий срез углов "как ножницами" — по умолчанию,
      полноценные .rift-torn-a/b/c накладываются точечно поверх. */
   .glass {
-    background: var(--card);
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    clip-path: polygon(0% 4%, 96% 0%, 100% 92%, 4% 100%);
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25), 0 8px 20px rgba(0, 0, 0, 0.25);
+    background: rgba(15, 19, 30, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(39, 217, 247, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   }
 
   .liquid-glass {
@@ -523,7 +524,7 @@
   .rift-input-torn {
     background: var(--card);
     border: 2px solid var(--border);
-    clip-path: polygon(0% 3%, 98% 0%, 100% 97%, 2% 100%);
+    border-radius: 14px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .rift-input-torn:focus-within {

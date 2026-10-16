@@ -122,14 +122,24 @@ export function ChatInput({ onSendMessage, onSendVoice, onToast, city, micDisabl
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Text input row — Telegram uslubida pill */}
-      <div className="flex-1 glass rounded-full px-3 py-2 flex items-center gap-2 min-w-0">
+    <div className="flex items-center gap-2 pt-2 pb-1">
+      {/* Text input row — Sleek Dark Obsidian Glass Pill */}
+      <div
+        className="flex-1 rounded-2xl px-3.5 py-2.5 flex items-center gap-2.5 min-w-0 transition-all duration-200 focus-within:border-[#27d9f7] focus-within:shadow-[0_0_15px_rgba(39,217,247,0.25)]"
+        style={{
+          background: 'rgba(15, 19, 30, 0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(39, 217, 247, 0.22)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+        }}
+      >
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[rgba(255,47,208,0.08)] transition-all"
+          className="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center text-[#859397] hover:text-[#27d9f7] hover:bg-[rgba(39,217,247,0.1)] active:scale-90 transition-all"
+          aria-label="Прикрепить файл"
         >
-          <Paperclip className="w-4.5 h-4.5" strokeWidth={1.8} />
+          <Paperclip className="w-4.5 h-4.5" strokeWidth={2} />
         </button>
         <input ref={fileInputRef} type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt" onChange={handleFileSelect} className="hidden" />
 
@@ -138,40 +148,43 @@ export function ChatInput({ onSendMessage, onSendVoice, onToast, city, micDisabl
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
-          placeholder={t('chat_placeholder')}
+          placeholder={t('chat_placeholder') || 'Сообщение...'}
           disabled={isRecording}
-          className="flex-1 min-w-0 bg-transparent text-sm text-[var(--text)] placeholder-[#9a9791] outline-none disabled:opacity-50"
+          className="flex-1 min-w-0 bg-transparent text-[14px] text-[#dfe2f1] placeholder-[#859397] outline-none disabled:opacity-50 font-normal selection:bg-[#27d9f7]/30"
         />
       </div>
 
-      {/* Doira tugma — Telegram kabi: matn bo'lsa yuborish, bo'lmasa mikrofon.
-          Yozib turganda qizil rangga o'zgaradi, tashqi halqa animate-ping bilan
-          urib turadi (button'ning o'zi/ikonkasi hech qachon xira bo'lmaydi). */}
+      {/* Action button — Send or Mic with Dark Obsidian & Cyan theme */}
       <div className="relative shrink-0">
         {isRecording && (
-          <span className="rift-rec-pulse absolute inset-0 rounded-full bg-[var(--danger)] opacity-60" />
+          <span className="rift-rec-pulse absolute inset-0 rounded-2xl bg-red-500 opacity-60" />
         )}
         <button
           onClick={handleActionClick}
           aria-label={isRecording ? 'Остановить и отправить' : hasText ? 'Отправить' : 'Записать голосовое'}
-          className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
+          className="relative w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-90 shrink-0"
           style={{
             background: isRecording
-              ? '#ff3b5c'
-              : micDisabled && !hasText
-                ? 'rgba(237,234,227,0.15)'
-                : 'linear-gradient(135deg, #ff6ee0, #FF2FD0)',
+              ? '#ef4444'
+              : hasText
+                ? 'linear-gradient(135deg, #27d9f7 0%, #059af0 100%)'
+                : 'linear-gradient(135deg, rgba(39,217,247,0.18) 0%, rgba(5,154,240,0.22) 100%)',
+            border: isRecording
+              ? '1px solid #ef4444'
+              : hasText
+                ? '1px solid rgba(39,217,247,0.6)'
+                : '1px solid rgba(39,217,247,0.3)',
             boxShadow: isRecording
-              ? '0 0 18px rgba(255,59,92,0.6)'
-              : micDisabled && !hasText
-                ? 'none'
-                : '0 0 16px rgba(255,47,208,0.4)',
+              ? '0 0 20px rgba(239,68,68,0.7)'
+              : hasText
+                ? '0 0 18px rgba(39,217,247,0.5)'
+                : '0 0 12px rgba(39,217,247,0.15)',
           }}
         >
           {hasText && !isRecording ? (
-            <Send className="w-4.5 h-4.5 text-white ml-[-1px]" strokeWidth={2} fill="white" />
+            <Send className="w-5 h-5 text-[#060a14] ml-[-1px]" strokeWidth={2.4} fill="#060a14" />
           ) : (
-            <Mic className={`w-5 h-5 ${micDisabled ? 'text-[#9a9791]' : 'text-white'}`} strokeWidth={2} />
+            <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : micDisabled ? 'text-[#859397]' : 'text-[#27d9f7]'}`} strokeWidth={2.2} />
           )}
         </button>
       </div>

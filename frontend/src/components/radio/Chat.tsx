@@ -42,10 +42,10 @@ export function Chat({
   };
 
   return (
-    <div className="bg-[#060a14] text-[#dfe2f1] p-3 flex flex-col flex-1 min-h-0 select-none">
+    <div className="bg-[#060a14] text-[#dfe2f1] px-3 pt-1 pb-2 flex flex-col flex-1 min-h-0 select-none">
       {/* Sleek chat header with back button, brand title, user ID, and rooms button */}
       <div
-        className="flex items-center justify-between pb-2 mb-2 border-b border-[rgba(39,217,247,0.14)]"
+        className="flex items-center justify-between pb-2.5 mb-2 border-b border-[rgba(39,217,247,0.14)]"
         style={{
           paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px), var(--tg-safe-top, 0px), 16px) + 12px)',
         }}
@@ -55,18 +55,18 @@ export function Chat({
             <button
               onClick={onExit}
               aria-label="Назад"
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[rgba(15,19,30,0.8)] border border-[rgba(39,217,247,0.22)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/40 active:scale-95 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[rgba(15,19,30,0.85)] border border-[rgba(39,217,247,0.25)] text-[#dfe2f1] hover:text-[#27d9f7] hover:border-[#27d9f7]/50 active:scale-90 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
             >
-              <svg className="w-4 h-4 text-[#27d9f7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-5 h-5 text-[#27d9f7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           )}
           <div className="flex flex-col">
-            <span className="text-xs font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
+            <span className="text-[13px] font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
               Живой Чат
             </span>
-            <span className="text-[10px] text-[#859397] font-mono">INTRA GROUP</span>
+            <span className="text-[10px] text-[#859397] font-mono tracking-wider">INTRA GROUP</span>
           </div>
         </div>
 
@@ -85,7 +85,7 @@ export function Chat({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 min-h-[60px] scroll-smooth"
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 px-0.5 py-1 min-h-[60px] scroll-smooth"
            style={{ WebkitOverflowScrolling: 'touch' }}>
         {messages.map((msg) => (
           <ChatMessageComponent
