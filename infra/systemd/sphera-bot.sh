@@ -14,7 +14,7 @@ for i in $(seq 1 60); do
     sleep 2
 done
 
-export BOT_TOKEN=6725497158:AAG4sl-lm7E8G7AsyKrhBgjg-Li2jwl47ek
+export BOT_TOKEN="${BOT_TOKEN:-}"
 export COMMUNITY_CHAT_ID=-1003883809940
 export ADMIN_IDS=7993413019
 export DISABLE_GROUP_CHECK=true

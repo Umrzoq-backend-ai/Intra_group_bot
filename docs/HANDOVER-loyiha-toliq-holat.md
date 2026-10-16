@@ -278,7 +278,7 @@ Boshliq raqami: `+370 682 11510` (Litva) bilan sinab ko'rish kerak.
 
 | O'zgaruvchi | Qiymat | Izoh |
 |-------------|--------|------|
-| `BOT_TOKEN` | `6725497158:AAG...` | @mybot_12_bot |
+| `BOT_TOKEN` | `<TELEGRAM_BOT_TOKEN>` | @mybot_12_bot |
 | `ADMIN_IDS` | `7993413019` | admin telegram_id |
 | `COMMUNITY_CHAT_ID` | `-1003883809940` | guruh |
 | `GEMINI_KEY` | `AIza...` | bepul kvota tez tugaydi |

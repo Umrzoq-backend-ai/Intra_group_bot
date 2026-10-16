@@ -9,7 +9,7 @@ export SECRET_KEY=devsecretkey1234567890devsecret
 export UPLOAD_DIR=/mnt/d/KIro_projectsbot/sphera-main/.uploads AUDIO_DIR=/mnt/d/KIro_projectsbot/sphera-main/.audio
 export MINIAPP_DIR="$ROOT/frontend/dist"
 export FILLER_SECONDS=30
-export BOT_TOKEN=6725497158:AAG4sl-lm7E8G7AsyKrhBgjg-Li2jwl47ek
+export BOT_TOKEN="${BOT_TOKEN:-}"
 export COMMUNITY_CHAT_ID=-1003883809940
 export ADMIN_IDS=7993413019
 export DISABLE_GROUP_CHECK=true
