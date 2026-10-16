@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import { ChatMessage as ChatMessageComponent } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { RoomsButton } from './RoomsScreen';
+import { markMessagesAsRead } from '../../lib/chatUnread';
 import type { ChatMessage as ChatMessageType, User } from '../../types';
 
 interface ChatProps {
@@ -31,7 +32,10 @@ export function Chat({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      markMessagesAsRead(messages, city);
+    }
+  }, [messages, city]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,7 +46,9 @@ export function Chat({
       {/* Sleek chat header with back button, brand title, user ID, and rooms button */}
       <div
         className="flex items-center justify-between pb-2 mb-2 border-b border-[rgba(39,217,247,0.14)]"
-        style={{ paddingTop: 'calc(76px + env(safe-area-inset-top))' }}
+        style={{
+          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px), var(--tg-safe-top, 0px), 16px) + 12px)',
+        }}
       >
         <div className="flex items-center gap-2.5">
           {onExit && (

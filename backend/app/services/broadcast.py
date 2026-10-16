@@ -93,10 +93,8 @@ class BroadcastSession:
             # bo'laklarni imkon qadar tez qayta ishlab, oqimni soniyalarда
             # "tugatib qo'yadi" — tinglovchi hech narsa ulgurmaydi eshitishga.
             "-re",
-            "-f",
-            "webm",
             "-i",
-            "pipe:0",  # stdin'dан webm/opus
+            "pipe:0",  # stdin'dan audio (FFmpeg auto-probes webm, ogg, mp4)
             *_encode_args(),
             _target_url(mount),
         ]

@@ -52,6 +52,8 @@
     --tg-safe-bottom: 0px;
     --tg-safe-left: 0px;
     --tg-safe-right: 0px;
+    --safe-top: max(var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px), var(--tg-safe-top, 0px), env(safe-area-inset-top, 0px));
+    --safe-bottom: max(var(--tg-content-safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px), var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px));
 
     --primary-dim: #27d9f7;
     --primary-light: #c2f3ff;
@@ -268,6 +270,13 @@
 }
 
 @layer utilities {
+  .pt-safe {
+    padding-top: max(var(--safe-top), 16px);
+  }
+  .pb-safe {
+    padding-bottom: max(var(--safe-bottom), 16px);
+  }
+
   /* Базовая карточка — использует токены ТЕКУЩЕЙ зоны (см. .rift-zone-uN
      выше), поэтому один и тот же класс выглядит по-разному в разных
      местах приложения. Лёгкий срез углов "как ножницами" — по умолчанию,

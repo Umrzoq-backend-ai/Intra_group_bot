@@ -23,7 +23,7 @@ export function initTelegramWebApp() {
       tg.enableClosingConfirmation();
     }
 
-    // Viewport changes (keyboard, focus)
+    // Viewport changes (keyboard, focus, fullscreen)
     if (typeof tg.onEvent === 'function') {
       tg.onEvent('viewportChanged', applyViewportHeight);
       // Android jismoniy "Kнопки" navigatsiyasi (yoki gesture pill) —
@@ -33,6 +33,10 @@ export function initTelegramWebApp() {
       // shu API'ga tayanamiz — u ancha ishonchli.
       tg.onEvent('safeAreaChanged', applySafeAreaInsets);
       tg.onEvent('contentSafeAreaChanged', applySafeAreaInsets);
+      tg.onEvent('fullscreenChanged', () => {
+        applyViewportHeight();
+        applySafeAreaInsets();
+      });
     }
 
     // Telegram theme colors
@@ -45,6 +49,8 @@ export function initTelegramWebApp() {
 
     applyViewportHeight();
     applySafeAreaInsets();
+    setTimeout(applySafeAreaInsets, 150);
+    setTimeout(applySafeAreaInsets, 400);
   } catch (e) {
     console.error('TG init error:', e);
   }

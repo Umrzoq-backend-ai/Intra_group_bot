@@ -670,12 +670,18 @@ async def broadcast_http_start(city: str, user: dict = Depends(get_current_user)
 
     session = broadcast.open_session(city, name)
     if session is None:
-        continuous.resume("ru")
-        return {"status": "busy"}
+        # If approved caller is taking the mic, stop previous host broadcast to hand off
+        if not (is_admin or is_doverenniy):
+            await _stop_city_broadcast(city)
+            session = broadcast.open_session(city, name)
+        if session is None:
+            continuous.resume("ru")
+            return {"status": "busy"}
 
     _http_broadcast_owner[city] = user["id"]
-    if slot is not None and expires_at is not None:
+    if expires_at is not None:
         _broadcast_expiry[city] = expires_at
+    if slot is not None:
         _broadcast_slot_id[city] = slot["id"]
         await db.execute("UPDATE broadcast_slots SET status = 'live' WHERE id = $1", slot["id"])
 
@@ -709,7 +715,7 @@ async def broadcast_http_start(city: str, user: dict = Depends(get_current_user)
 
 @router.post("/{city}/broadcast/chunk")
 async def broadcast_http_chunk(
-    city: str, request: Request, user: dict = Depends(require_role("doverenniy"))
+    city: str, request: Request, user: dict = Depends(get_current_user)
 ):
     """[doverenniy+] Navbatdagi audio chunk'ni yuboradi (HTTP chunk fallback)."""
     if _http_broadcast_owner.get(city) != user["id"]:

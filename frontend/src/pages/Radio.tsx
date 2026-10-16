@@ -358,9 +358,13 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
         className="w-full max-w-[440px] sm:max-w-[460px] h-full sm:h-[94vh] sm:max-h-[920px] sm:my-auto sm:rounded-[36px] sm:border sm:border-[rgba(39,217,247,0.22)] sm:shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(39,217,247,0.15)] bg-[#060a14]/90 backdrop-blur-2xl flex flex-col relative z-10 overflow-hidden"
         style={{ height: 'var(--app-vh)' }}
       >
-        {/* Fixed TopBar on non-chat tabs with user Telegram ID and points */}
         {!isChat && (
-          <div className="px-4 pt-2.5 pb-1 z-20 shrink-0 border-b border-[rgba(39,217,247,0.1)]">
+          <div
+            className="px-3 sm:px-4 pb-1.5 z-20 shrink-0 border-b border-[rgba(39,217,247,0.1)] bg-[#060a14]/80 backdrop-blur-md"
+            style={{
+              paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px), var(--tg-safe-top, 0px), 16px) + 12px)',
+            }}
+          >
             <TopBar points={user?.points || 0} telegramId={user?.telegram_id} />
           </div>
         )}
@@ -379,7 +383,9 @@ export function Radio({ liveBroadcast, showToast }: RadioProps) {
         >
           <div
             className={`w-full mx-auto flex flex-col gap-3 ${
-              isChat ? 'h-full pb-[86px]' : 'px-4 pt-1 pb-[120px]'
+              isChat
+                ? 'h-full pb-[calc(86px+max(env(safe-area-inset-bottom,0px),var(--tg-safe-bottom,0px)))]'
+                : 'px-3 sm:px-4 pt-1 pb-[calc(110px+max(env(safe-area-inset-bottom,0px),var(--tg-safe-bottom,0px)))]'
             }`}
           >
             {isChat ? (

@@ -6,6 +6,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { Toast } from '../ui/Toast';
 import { getChatHistory, sendChatMessage, sendVoiceMessage } from '../../lib/api';
 import { DEFAULT_CITY, LS_CITY } from '../../lib/config';
+import { markMessagesAsRead } from '../../lib/chatUnread';
 import type { User, ChatMessage } from '../../types';
 
 interface ChatScreenProps {
@@ -39,7 +40,11 @@ export function ChatScreen({ user, onPointsUpdate, onExit, isLive }: ChatScreenP
     msgs.filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
 
   const loadHistory = useCallback(() => {
-    getChatHistory(city).then((msgs) => setMessages(dedupe(msgs))).catch(() => {});
+    getChatHistory(city).then((msgs) => {
+      const unique = dedupe(msgs);
+      setMessages(unique);
+      markMessagesAsRead(unique, city);
+    }).catch(() => {});
   }, [city]);
 
   useEffect(() => {
@@ -70,6 +75,9 @@ export function ChatScreen({ user, onPointsUpdate, onExit, isLive }: ChatScreenP
           }
           return [...prev, newMsg];
         });
+        if (newMsg?.id) {
+          markMessagesAsRead([newMsg], city);
+        }
         break;
       }
       case 'balance':

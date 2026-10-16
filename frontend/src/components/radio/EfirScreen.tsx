@@ -20,6 +20,7 @@ import {
 import { DEFAULT_CITY, LS_CITY } from '../../lib/config';
 import { hapticImpact } from '../../lib/telegram';
 import { useTranslation } from '../../hooks/useTranslation';
+import { calculateUnreadCount, markMessagesAsRead } from '../../lib/chatUnread';
 import type { User, RadioStatus, ChatMessage, Screen } from '../../types';
 
 interface PendingChatSend {
@@ -60,12 +61,27 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
   const { message, variant: toastVariant, showToast } = useToast();
   const [city] = useState(localStorage.getItem(LS_CITY) || DEFAULT_CITY);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // O'zimiz optimistik qo'shgan (hali serverdan tasdiqlanmagan) chat
-  // xabarlari — asosiy chat ekranidagi bilan bir xil 1/2 galochka mexanizmi.
-  const pendingChatRef = useRef<PendingChatSend[]>([]);
+  const [, setLastReadTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [showChatModal, setShowChatModal] = useState(false);
+
+  const unreadCount = showChatModal ? 0 : calculateUnreadCount(messages, city, user?.telegram_id);
+
+  useEffect(() => {
+    const onReadUpdated = () => setLastReadTick((t) => t + 1);
+    window.addEventListener('chat_read_updated', onReadUpdated);
+    return () => window.removeEventListener('chat_read_updated', onReadUpdated);
+  }, []);
+
+  useEffect(() => {
+    if (showChatModal && messages.length > 0) {
+      markMessagesAsRead(messages, city);
+    }
+  }, [showChatModal, messages, city]);
+  // O'zimiz optimistik qo'shgan (hali serverdan tasdiqlanmagan) chat
+  // xabarlari — asosiy chat ekranidagi bilan bir xil 1/2 galochka mexanizmi.
+  const pendingChatRef = useRef<PendingChatSend[]>([]);
   const [showStreamModal, setShowStreamModal] = useState(false);
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [studioText, setStudioText] = useState('');
@@ -471,14 +487,16 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
     setShowStudioModal(true);
   };
 
-  // Chat modalni ochish — har ochilganda tarixni yangilaymiz
+  // Chat modalni ochish — har ochilganda tarixni yangilaymiz va o'qilgan deb belgilaymiz
   const openChat = useCallback(() => {
+    markMessagesAsRead(messages, city);
     setShowChatModal(true);
     getChatHistory(city).then(msgs => {
       const unique = msgs.filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
       setMessages(unique);
+      markMessagesAsRead(unique, city);
     }).catch(() => {});
-  }, [city]);
+  }, [city, messages]);
 
   const submitStudioMessage = () => {
     const msg = studioText.trim();
@@ -655,9 +673,9 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             }}
           >
             <MessageSquare className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
-            {messages.length > 0 && (
+            {unreadCount > 0 && (
               <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4.5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-[#060a14] bg-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.6)]">
-                {messages.length > 9 ? '9+' : messages.length}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </div>
             )}
           </div>
@@ -955,9 +973,14 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             <div className="flex items-center justify-around gap-3 mb-5">
               <button onClick={() => { setShowStreamModal(false); openChat(); }}
                 className="flex flex-col items-center gap-1.5 flex-1 group">
-                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-95"
+                <div className="w-full h-[58px] rounded-2xl flex items-center justify-center relative transition-all duration-200 active:scale-95"
                   style={{ background: 'rgba(21, 26, 38, 0.7)', border: '1px solid rgba(39, 217, 247, 0.2)' }}>
                   <MessageSquare className="w-5 h-5 text-[#859397] group-hover:text-[#27d9f7] transition-colors" strokeWidth={1.8} />
+                  {unreadCount > 0 && (
+                    <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4.5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-[#060a14] bg-[#27d9f7] shadow-[0_0_10px_rgba(39,217,247,0.6)]">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </div>
+                  )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#859397] group-hover:text-[#dfe2f1] tracking-wide text-center leading-tight">
                   Чат эфира
@@ -1077,8 +1100,41 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
       {showChatModal && (
         <FullScreenModal>
 
-          {/* Sarlavhasiz, chegarasiz — toza ko'rinish. Yopish Telegram'ning
-              o'z native chrome/BackButton'i orqali. */}
+          {/* Header with Close button, title, and user ID */}
+          <div
+            className="flex items-center justify-between px-4 pb-2.5 border-b border-[rgba(39,217,247,0.14)] shrink-0"
+            style={{
+              paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px)) + 12px)',
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => {
+                  markMessagesAsRead(messages, city);
+                  setShowChatModal(false);
+                }}
+                className="w-8 h-8 rounded-xl flex items-center justify-center bg-[rgba(15,19,30,0.8)] border border-[rgba(39,217,247,0.22)] text-[#dfe2f1] hover:text-[#27d9f7] active:scale-95 transition-all shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
+                aria-label="Закрыть"
+              >
+                <X className="w-4 h-4 text-[#27d9f7]" />
+              </button>
+              <div className="flex flex-col">
+                <span className="text-xs font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
+                  Чат прямого эфира
+                </span>
+                <span className="text-[10px] text-[#859397] font-mono">INTRA GROUP</span>
+              </div>
+            </div>
+
+            {user?.telegram_id ? (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(15,19,30,0.85)] border border-[rgba(39,217,247,0.25)] shadow-[0_0_12px_rgba(39,217,247,0.1)]">
+                <span className="text-[9px] font-extrabold text-[#859397] uppercase font-['Sora']">ID</span>
+                <span className="font-mono text-xs font-bold text-[#27d9f7] tabular-nums">
+                  {user.telegram_id}
+                </span>
+              </div>
+            ) : null}
+          </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4" ref={(el) => {

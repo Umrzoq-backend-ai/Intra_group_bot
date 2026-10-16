@@ -203,6 +203,25 @@ export function useLiveBroadcast(city: string, onToast: (message: string) => voi
       });
   };
 
+function getSupportedAudioMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+    return undefined;
+  }
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+    'audio/aac',
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return undefined;
+}
+
   const startRecorder = (stream: MediaStream) => {
     // MUAMMO (topilgan): MediaRecorder.pause()/resume() ba'zi Telegram
     // WebView'larda (ayniqsa iOS) resume()dan keyin yangi WebM
@@ -220,18 +239,18 @@ export function useLiveBroadcast(city: string, onToast: (message: string) => voi
     const onData = (e: BlobEvent) => {
       if (e.data.size > 0 && !isPausedRef.current) sendChunk(e.data);
     };
+    const mimeType = getSupportedAudioMimeType();
+    let recorder: MediaRecorder;
     try {
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      recorderRef.current = recorder;
-      recorder.ondataavailable = onData;
-      recorder.start(500);
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     } catch {
-      const recorder = new MediaRecorder(stream);
-      recorderRef.current = recorder;
-      recorder.ondataavailable = onData;
-      recorder.start(500);
+      recorder = new MediaRecorder(stream);
     }
+    recorderRef.current = recorder;
+    recorder.ondataavailable = onData;
+    recorder.start(500);
   };
+
 
   // Efirni vaqtincha to'xtatish — masalan vediushiy bir necha daqiqaga
   // chetlashishi kerak bo'lsa. Recorder o'zi hech qachon to'xtamaydi —
