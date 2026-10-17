@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Check, CheckCheck, Clock, Play, Pause, AlertTriangle, Music2, Download, Paperclip } from 'lucide-react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { Check, CheckCheck, Clock, Play, Pause, AlertTriangle, Paperclip } from 'lucide-react';
 import { API_URL } from '../../lib/config';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { ChatMessage, User } from '../../types';
@@ -33,7 +33,15 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
 
   const renderContent = () => {
     if (message.voice_url) {
-      return <VoicePlayer url={message.voice_url} duration={message.duration_sec ?? null} voiceLabel={t('voice_label')} isMine={isMine} />;
+      return (
+        <VoicePlayer
+          url={message.voice_url}
+          duration={message.duration_sec ?? null}
+          voiceLabel={t('voice_label')}
+          isMine={isMine}
+          messageId={message.id}
+        />
+      );
     }
     if (message.file_url) {
       return <FileAttachment url={message.file_url} name={message.file_name || 'файл'} isMine={isMine} />;
@@ -93,23 +101,85 @@ function StatusTicks({ status }: { status: 'sending' | 'sent' | 'delivered' }) {
   return <Check className="w-3.5 h-3.5 text-[#27d9f7]/70 shrink-0" />;
 }
 
-function VoicePlayer({ url, duration, voiceLabel, isMine }: { url: string; duration: number | null; voiceLabel: string; isMine: boolean }) {
+interface VoicePlayerProps {
+  url: string;
+  duration: number | null;
+  voiceLabel?: string;
+  isMine: boolean;
+  messageId?: number;
+}
+
+function VoicePlayer({ url, duration, voiceLabel, isMine, messageId }: VoicePlayerProps) {
   const fullUrl = url.startsWith('http') || url.startsWith('blob:') ? url : `${API_URL}${url}`;
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState<number>(duration || 0);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handlePlay = () => {
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Generate a consistent, organic waveform of 28 bars based on messageId / url
+  const bars = useMemo(() => {
+    const seed = messageId || (url ? url.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) : 42);
+    const result: number[] = [];
+    const count = 28;
+    for (let i = 0; i < count; i++) {
+      const sinFactor = Math.sin((i / (count - 1)) * Math.PI);
+      const pseudo = ((seed * (i + 7) * 9301 + 49297) % 233280) / 233280;
+      const heightPct = Math.max(20, Math.min(100, Math.round(sinFactor * 52 + pseudo * 48)));
+      result.push(heightPct);
+    }
+    return result;
+  }, [messageId, url]);
+
+  const effectiveDuration = totalDuration > 0 ? totalDuration : (duration || 0);
+  const progress = effectiveDuration > 0 ? Math.min(1, currentTime / effectiveDuration) : 0;
+  const activeBarIndex = Math.floor(progress * bars.length);
+
+  const initAudio = () => {
     if (!audioRef.current) {
       const audio = new Audio(fullUrl);
-      audio.onended = () => setPlaying(false);
+      audio.playbackRate = playbackSpeed;
+      audio.preload = 'metadata';
+
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+          setTotalDuration(Math.round(audio.duration));
+        }
+      };
+
+      audio.ontimeupdate = () => {
+        setCurrentTime(audio.currentTime);
+      };
+
+      audio.onended = () => {
+        setPlaying(false);
+        setCurrentTime(0);
+      };
+
       audio.onerror = () => {
         setFailed(true);
         setPlaying(false);
       };
+
       audioRef.current = audio;
     }
-    const audio = audioRef.current;
+    return audioRef.current;
+  };
+
+  const handlePlay = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (failed) return;
+
+    const audio = initAudio();
     if (playing) {
       audio.pause();
       setPlaying(false);
@@ -120,28 +190,114 @@ function VoicePlayer({ url, duration, voiceLabel, isMine }: { url: string; durat
     }
   };
 
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (failed) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const pct = clickX / rect.width;
+    const dur = effectiveDuration > 0 ? effectiveDuration : 5;
+    const targetTime = pct * dur;
+
+    const audio = initAudio();
+    audio.currentTime = targetTime;
+    setCurrentTime(targetTime);
+
+    if (!playing) {
+      audio.play().then(() => setPlaying(true)).catch(() => {});
+    }
+  };
+
+  const toggleSpeed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSpeed = playbackSpeed === 1 ? 1.5 : playbackSpeed === 1.5 ? 2 : 1;
+    setPlaybackSpeed(nextSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = nextSpeed;
+    }
+  };
+
+  const fmtSec = (s: number) => {
+    const secVal = Math.max(0, Math.floor(s));
+    const m = Math.floor(secVal / 60);
+    const sec = secVal % 60;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
   return (
-    <div className="flex items-center gap-2.5 min-w-[140px] my-1">
+    <div className="flex items-center gap-3 min-w-[210px] max-w-[270px] py-1 select-none">
+      {/* Circular Play / Pause Button with Glow */}
       <button
         onClick={handlePlay}
-        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+        disabled={failed}
+        aria-label={playing ? 'Пауза' : 'Воспроизвести'}
+        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 shrink-0 ${
           failed
-            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 cursor-not-allowed'
             : isMine
-            ? 'bg-[#27d9f7] text-[#060a14] shadow-[0_0_12px_rgba(39,217,247,0.4)] active:scale-95'
-            : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.3)] active:scale-95'
+            ? 'bg-gradient-to-r from-[#27d9f7] to-[#059af0] text-[#060a14] shadow-[0_0_14px_rgba(39,217,247,0.45)]'
+            : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.35)] shadow-[0_0_10px_rgba(39,217,247,0.15)] hover:bg-[rgba(39,217,247,0.25)]'
         }`}
       >
-        {failed ? <AlertTriangle className="w-3.5 h-3.5" /> : playing ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 ml-0.5 fill-current" />}
+        {failed ? (
+          <AlertTriangle className="w-4 h-4" />
+        ) : playing ? (
+          <Pause className="w-4 h-4 fill-current" />
+        ) : (
+          <Play className="w-4 h-4 ml-0.5 fill-current" />
+        )}
       </button>
-      <span className="text-xs text-[#dfe2f1] font-mono flex items-center gap-1">
-        <Music2 className="w-3 h-3 text-[#27d9f7]" /> {duration ? `${duration}ʺ` : voiceLabel}
-      </span>
-      {failed && (
-        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="text-rose-400 hover:text-rose-300">
-          <Download className="w-3.5 h-3.5" />
-        </a>
-      )}
+
+      {/* Waveform & Time Track Column */}
+      <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
+        {/* Interactive Waveform Bars (Telegram Style) */}
+        <div
+          onClick={handleSeek}
+          className="flex items-center gap-[2.5px] h-6 cursor-pointer py-1 relative group"
+          title="Нажмите для перемотки"
+        >
+          {bars.map((barHeight, idx) => {
+            const isPassed = idx <= activeBarIndex && !failed && (currentTime > 0 || playing);
+            const isCurrent = idx === activeBarIndex && playing;
+            const heightPx = Math.max(4, Math.round((barHeight / 100) * 22));
+
+            return (
+              <div
+                key={idx}
+                className="w-[2.5px] rounded-full transition-all duration-100"
+                style={{
+                  height: `${isCurrent ? Math.min(24, heightPx + 4) : heightPx}px`,
+                  backgroundColor: isPassed
+                    ? '#27d9f7'
+                    : 'rgba(133, 147, 151, 0.45)',
+                  boxShadow: isPassed ? '0 0 6px rgba(39, 217, 247, 0.5)' : 'none',
+                  transform: isCurrent ? 'scaleY(1.15)' : 'none',
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Footer: Elapsed/Duration Time & Speed Button */}
+        <div className="flex items-center justify-between text-[11px] font-mono leading-none text-[#859397]">
+          <span className={`tabular-nums ${playing ? 'text-[#27d9f7] font-bold' : ''}`}>
+            {failed
+              ? 'Файл недоступен'
+              : effectiveDuration > 0 || playing
+              ? fmtSec(playing ? currentTime : effectiveDuration)
+              : (voiceLabel || '00:00')}
+          </span>
+
+          {!failed && (
+            <button
+              onClick={toggleSpeed}
+              title="Скорость воспроизведения"
+              className="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono tracking-tight bg-[rgba(39,217,247,0.12)] text-[#27d9f7] hover:bg-[#27d9f7]/25 transition-all active:scale-95 border border-[rgba(39,217,247,0.2)]"
+            >
+              {playbackSpeed}X
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

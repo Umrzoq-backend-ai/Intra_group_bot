@@ -97,6 +97,8 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at
 
 -- city ustuni — xabarni qaysi efir shahriga tegishliligi (default: global)
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS city VARCHAR(50) DEFAULT 'global';
+-- audio_data — ovozli xabarni PostgreSQL'da saqlash (Render redeploy paytida yo'qolmasligi uchun)
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_data BYTEA;
 
 -- ============ Guruhlar (ведущий/admin yaratadi — TZ: "ведущий имел возможность создавать группы") ============
 CREATE TABLE IF NOT EXISTS chat_rooms (

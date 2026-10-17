@@ -222,12 +222,13 @@ async def send_voice(
 
     row = await db.fetchrow(
         """
-        INSERT INTO chat_messages (user_id, message, message_type, audio_file_path)
-        VALUES ($1, '', 'voice', $2)
+        INSERT INTO chat_messages (user_id, message, message_type, audio_file_path, audio_data)
+        VALUES ($1, '', 'voice', $2, $3)
         RETURNING id, created_at
         """,
         user["id"],
         fname,
+        content,
     )
 
     voice_url = f"/chat/voice/{fname}"
@@ -260,15 +261,33 @@ async def get_voice(filename: str):
     safe = os.path.basename(filename)
     fpath = os.path.join(settings.upload_dir, safe)
     if not os.path.isfile(fpath):
-        # Xabar darhol broadcast qilinadi, lekin fon MP3 konvertatsiyasi
-        # bir necha yuz millisekund davom etishi mumkin — kimdir shu oraliqda
-        # "play" bossa, qisqa muddat kutib ko'ramiz (404 qaytarish o'rniga).
-        for _ in range(20):
-            await asyncio.sleep(0.1)
-            if os.path.isfile(fpath):
-                break
-        else:
-            raise HTTPException(status_code=404, detail="Voice not found")
+        # 1. Ephemeral diskda yo'q bo'lsa (server restart), PostgreSQL'dan tiklaymiz
+        try:
+            row = await db.fetchrow(
+                """
+                SELECT audio_data FROM chat_messages
+                WHERE audio_file_path = $1 OR audio_file_path LIKE $2
+                LIMIT 1
+                """,
+                safe,
+                f"%{safe}%",
+            )
+            if row and row["audio_data"]:
+                os.makedirs(settings.upload_dir, exist_ok=True)
+                with open(fpath, "wb") as f:
+                    f.write(row["audio_data"])
+        except Exception as e:
+            log.warning("Failed to restore voice from db: %s", e)
+
+        # 2. Agar hali ham yo'q bo'lsa (fon konvertatsiyasi ketayotgan bo'lsa), qisqa kutamiz
+        if not os.path.isfile(fpath):
+            for _ in range(15):
+                await asyncio.sleep(0.1)
+                if os.path.isfile(fpath):
+                    break
+            else:
+                raise HTTPException(status_code=404, detail="Voice not found")
+
     ext = os.path.splitext(safe)[1].lower()
     media_types = {
         ".webm": "audio/webm",
@@ -279,7 +298,15 @@ async def get_voice(filename: str):
         ".wav": "audio/wav",
     }
     media_type = media_types.get(ext, "audio/webm")
-    return FileResponse(fpath, media_type=media_type)
+    return FileResponse(
+        fpath,
+        media_type=media_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 @router.websocket("/ws")
