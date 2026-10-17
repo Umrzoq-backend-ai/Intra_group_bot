@@ -204,6 +204,8 @@ class ChatMessageOut(BaseModel):
     message: str
     message_type: str = "text"
     voice_url: str | None = None
+    file_url: str | None = None
+    file_name: str | None = None
     created_at: datetime
 
 

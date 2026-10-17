@@ -99,12 +99,14 @@ export function ChatInput({ onSendMessage, onSendVoice, onToast, city, micDisabl
       return;
     }
     try {
+      hapticImpact('light');
       await uploadFile(city, file);
+      hapticImpact('medium');
     } catch (error: any) {
       if (error.status === 402) {
         onToast(t('toast_limit'));
       } else {
-        onToast(t('send_error'));
+        onToast(error.message || t('send_error'));
       }
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';

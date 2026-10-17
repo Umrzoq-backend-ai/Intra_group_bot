@@ -370,9 +370,19 @@ export async function applyCasting(audioBlob: Blob, note: string): Promise<any> 
   return resp.json();
 }
 
-export async function uploadFile(_city: string, _file: File) {
-  // v3 backend'da fayl endpointi yo'q — hozircha qo'llab-quvvatlanmaydi
-  throw Object.assign(new Error('File upload not supported'), { status: 400 });
+export async function uploadFile(city: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const resp = await fetch(`${API_URL}/chat/file?city=${encodeURIComponent(city || 'global')}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw Object.assign(new Error(err.detail || 'File upload failed'), { status: resp.status });
+  }
+  return resp.json();
 }
 
 // ============ Opinions / Topics (yangi konsepsiya) ============

@@ -8,6 +8,7 @@
 
 import asyncio
 import logging
+import mimetypes
 import os
 import uuid
 
@@ -76,6 +77,17 @@ async def _convert_to_mp3_background(src_path: str, mp3_fpath: str) -> None:
         await proc.wait()
         if proc.returncode == 0 and os.path.isfile(mp3_fpath) and os.path.getsize(mp3_fpath) > 0:
             try:
+                with open(mp3_fpath, "rb") as f:
+                    mp3_data = f.read()
+                mp3_basename = os.path.basename(mp3_fpath)
+                await db.execute(
+                    "UPDATE chat_messages SET audio_data = $1 WHERE audio_file_path = $2",
+                    mp3_data,
+                    mp3_basename,
+                )
+            except Exception as e:
+                log.warning("Failed to update chat_messages audio_data with mp3: %s", e)
+            try:
                 os.remove(src_path)
             except OSError:
                 pass
@@ -102,7 +114,7 @@ async def get_chat_history(limit: int = 50):
     rows = await db.fetch(
         """
         SELECT c.id, u.telegram_id, u.username, u.display_name, c.message, c.message_type,
-               c.audio_file_path, c.created_at
+               c.audio_file_path, c.file_path, c.file_name, c.created_at
         FROM chat_messages c
         LEFT JOIN users u ON u.id = c.user_id
         WHERE c.room_id IS NULL
@@ -118,15 +130,22 @@ async def get_chat_history(limit: int = 50):
         if r["message_type"] == "voice" and r["audio_file_path"]:
             # Relative (same-origin) URL — Telegram WebApp tunnel orqali ishlaydi
             voice_url = f"/chat/voice/{r['audio_file_path']}"
+        file_url = None
+        file_name = None
+        if r["message_type"] == "file" and r["file_path"]:
+            file_url = f"/chat/file/{r['file_path']}"
+            file_name = r["file_name"] or r["file_path"]
         out.append(
             ChatMessageOut(
                 id=r["id"],
                 telegram_id=r["telegram_id"],
                 username=r["username"],
                 display_name=r["display_name"],
-                message=r["message"],
+                message=r["message"] or "",
                 message_type=r["message_type"] or "text",
                 voice_url=voice_url,
+                file_url=file_url,
+                file_name=file_name,
                 created_at=r["created_at"],
             )
         )
@@ -256,6 +275,7 @@ async def send_voice(
 
 
 @router.get("/voice/{filename}")
+@router.head("/voice/{filename}")
 async def get_voice(filename: str):
     """Ovozli xabar faylini qaytaradi."""
     safe = os.path.basename(filename)
@@ -305,6 +325,140 @@ async def get_voice(filename: str):
             "Accept-Ranges": "bytes",
             "Cache-Control": "public, max-age=31536000, immutable",
             "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
+# ============ Fayl / Rasm yuborish (chatga) ============
+@router.post("/file", response_model=OkResponse)
+async def send_file(
+    file: UploadFile = File(...),
+    city: str = Query("global"),
+    user: dict = Depends(get_current_user),
+):
+    """Chatga fayl yoki rasm yuklash — matn kabi point sarflanadi."""
+    spent = await points_service.spend_text(user["id"])
+    if not spent["ok"]:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "insufficient_points", "points": str(spent["points"])},
+        )
+
+    content = await file.read()
+    if len(content) > settings.max_upload_mb * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    orig_name = os.path.basename(file.filename or "file")
+    ext = os.path.splitext(orig_name)[1].lower()
+    uid = uuid.uuid4().hex
+    saved_fname = f"file_{uid}{ext}"
+    fpath = os.path.join(settings.upload_dir, saved_fname)
+    with open(fpath, "wb") as f:
+        f.write(content)
+
+    mime_type = file.content_type or "application/octet-stream"
+
+    row = await db.fetchrow(
+        """
+        INSERT INTO chat_messages (user_id, message, message_type, file_path, file_name, file_data, file_mime, city)
+        VALUES ($1, $2, 'file', $3, $4, $5, $6, $7)
+        RETURNING id, created_at
+        """,
+        user["id"],
+        orig_name,
+        saved_fname,
+        orig_name,
+        content,
+        mime_type,
+        city or "global",
+    )
+
+    file_url = f"/chat/file/{saved_fname}"
+
+    await manager.broadcast(
+        city or "global",
+        {
+            "type": "chat",
+            "data": {
+                "id": row["id"],
+                "telegram_id": user.get("telegram_id"),
+                "username": user["username"],
+                "display_name": _display_name(user),
+                "message": orig_name,
+                "message_type": "file",
+                "file_url": file_url,
+                "file_name": orig_name,
+                "created_at": row["created_at"].isoformat(),
+            },
+        },
+    )
+
+    return OkResponse(detail={"points": str(spent["points"]), "file_url": file_url, "file_name": orig_name})
+
+
+@router.get("/file/{filename}")
+@router.head("/file/{filename}")
+async def get_file(filename: str):
+    """Chat faylini qaytaradi — diskda yo'q bo'lsa PostgreSQL'dan tiklanadi."""
+    safe = os.path.basename(filename)
+    fpath = os.path.join(settings.upload_dir, safe)
+    mime_type = "application/octet-stream"
+    orig_name = safe
+
+    if not os.path.isfile(fpath):
+        try:
+            row = await db.fetchrow(
+                """
+                SELECT file_data, file_mime, file_name FROM chat_messages
+                WHERE file_path = $1 OR file_path LIKE $2
+                LIMIT 1
+                """,
+                safe,
+                f"%{safe}%",
+            )
+            if row and row["file_data"]:
+                os.makedirs(settings.upload_dir, exist_ok=True)
+                with open(fpath, "wb") as f:
+                    f.write(row["file_data"])
+                if row["file_mime"]:
+                    mime_type = row["file_mime"]
+                if row["file_name"]:
+                    orig_name = row["file_name"]
+            else:
+                raise HTTPException(status_code=404, detail="File not found")
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.warning("Failed to restore file from db: %s", e)
+            raise HTTPException(status_code=404, detail="File not found")
+    else:
+        try:
+            row = await db.fetchrow(
+                "SELECT file_mime, file_name FROM chat_messages WHERE file_path = $1 LIMIT 1",
+                safe,
+            )
+            if row:
+                if row["file_mime"]:
+                    mime_type = row["file_mime"]
+                if row["file_name"]:
+                    orig_name = row["file_name"]
+        except Exception:
+            pass
+
+    if mime_type == "application/octet-stream":
+        guessed, _ = mimetypes.guess_type(orig_name or safe)
+        if guessed:
+            mime_type = guessed
+
+    return FileResponse(
+        fpath,
+        media_type=mime_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "Access-Control-Allow-Origin": "*",
+            "Content-Disposition": f'inline; filename="{orig_name}"',
         },
     )
 

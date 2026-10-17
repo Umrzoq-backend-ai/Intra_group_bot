@@ -305,22 +305,45 @@ function VoicePlayer({ url, duration, voiceLabel, isMine, messageId }: VoicePlay
 function FileAttachment({ url, name, isMine }: { url: string; name: string; isMine: boolean }) {
   const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
   const fileName = name.replace(/^📎\s*/, '');
+  const isImage = /\.(jpe?g|png|gif|webp|svg)$/i.test(fileName);
+
+  if (isImage) {
+    return (
+      <div className="my-1.5 max-w-[260px] rounded-xl overflow-hidden border border-[rgba(39,217,247,0.25)] shadow-md">
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="block relative group">
+          <img
+            src={fullUrl}
+            alt={fileName}
+            className="w-full max-h-[220px] object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium backdrop-blur-[2px]">
+            Открыть
+          </div>
+        </a>
+      </div>
+    );
+  }
 
   return (
     <a
       href={fullUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 min-w-[130px] my-1 no-underline group"
+      className="flex items-center gap-2.5 min-w-[150px] max-w-[260px] my-1 p-2 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(39,217,247,0.2)] hover:border-[#27d9f7]/50 transition-all no-underline group"
     >
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-        isMine
-          ? 'bg-[#27d9f7] text-[#060a14]'
-          : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.3)]'
-      }`}>
-        <Paperclip className="w-3.5 h-3.5" />
+      <div
+        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+          isMine
+            ? 'bg-[#27d9f7] text-[#060a14]'
+            : 'bg-[rgba(39,217,247,0.15)] text-[#27d9f7] border border-[rgba(39,217,247,0.3)]'
+        }`}
+      >
+        <Paperclip className="w-4 h-4" />
       </div>
-      <span className="text-xs text-[#dfe2f1] group-hover:text-[#27d9f7] underline break-all transition-colors">{fileName}</span>
+      <span className="text-xs text-[#dfe2f1] group-hover:text-[#27d9f7] underline break-all line-clamp-1 transition-colors">
+        {fileName}
+      </span>
     </a>
   );
 }

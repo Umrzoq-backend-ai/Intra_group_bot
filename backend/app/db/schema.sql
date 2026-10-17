@@ -99,6 +99,11 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS city VARCHAR(50) DEFAULT 'global';
 -- audio_data — ovozli xabarni PostgreSQL'da saqlash (Render redeploy paytida yo'qolmasligi uchun)
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_data BYTEA;
+-- Fayllarni PostgreSQL'da saqlash (Render redeploy paytida yo'qolmasligi uchun)
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_data BYTEA;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_mime VARCHAR(100);
 
 -- ============ Guruhlar (ведущий/admin yaratadi — TZ: "ведущий имел возможность создавать группы") ============
 CREATE TABLE IF NOT EXISTS chat_rooms (
