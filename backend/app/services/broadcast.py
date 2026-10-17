@@ -48,13 +48,32 @@ def _encode_args() -> list[str]:
     """Kodek/konteyner — Icecast uchun MP3, MediaMTX uchun AAC/FLV."""
     if USE_ICECAST:
         return [
-            "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "44100", "-ac", "2",
-            "-flush_packets", "1",
-            "-content_type", "audio/mpeg", "-f", "mp3",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "128k",
+            "-ar",
+            "44100",
+            "-ac",
+            "2",
+            "-flush_packets",
+            "1",
+            "-content_type",
+            "audio/mpeg",
+            "-f",
+            "mp3",
         ]
     return [
-        "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2",
-        "-f", "flv",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        "-f",
+        "flv",
     ]
 
 
@@ -88,8 +107,10 @@ class BroadcastSession:
         cmd = [
             _ffmpeg_bin(),
             "-hide_banner",
-            "-fflags", "+nobuffer",
-            "-flags", "low_delay",
+            "-fflags",
+            "+nobuffer",
+            "-flags",
+            "low_delay",
             "-i",
             "pipe:0",  # stdin'dan audio (FFmpeg auto-probes webm, ogg, mp4)
             *_encode_args(),

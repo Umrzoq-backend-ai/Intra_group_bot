@@ -194,12 +194,14 @@ async def test_get_packages(client, patch_db):
                 "id": 1,
                 "points_amount": Decimal("100"),
                 "price_eur": Decimal("1.00"),
+                "price_stars": 100,
                 "label": "100 points",
             },
             {
                 "id": 2,
                 "points_amount": Decimal("500"),
                 "price_eur": Decimal("4.00"),
+                "price_stars": 400,
                 "label": "500 points",
             },
         ]

@@ -92,7 +92,9 @@ async def _convert_to_mp3_background(src_path: str, mp3_fpath: str) -> None:
             except OSError:
                 pass
             return
-        log.warning("ffmpeg conversion failed (rc=%s), falling back to original file", proc.returncode)
+        log.warning(
+            "ffmpeg conversion failed (rc=%s), falling back to original file", proc.returncode
+        )
     except FileNotFoundError:
         log.warning("ffmpeg not found, falling back to original audio format")
     except Exception as exc:
@@ -394,7 +396,9 @@ async def send_file(
         },
     )
 
-    return OkResponse(detail={"points": str(spent["points"]), "file_url": file_url, "file_name": orig_name})
+    return OkResponse(
+        detail={"points": str(spent["points"]), "file_url": file_url, "file_name": orig_name}
+    )
 
 
 @router.get("/file/{filename}")
@@ -431,7 +435,7 @@ async def get_file(filename: str):
             raise
         except Exception as e:
             log.warning("Failed to restore file from db: %s", e)
-            raise HTTPException(status_code=404, detail="File not found")
+            raise HTTPException(status_code=404, detail="File not found") from e
     else:
         try:
             row = await db.fetchrow(

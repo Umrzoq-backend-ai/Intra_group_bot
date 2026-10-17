@@ -164,7 +164,11 @@ async def get_room_messages(room_id: int, limit: int = 50, user: dict = Depends(
     )
     out = []
     for r in reversed(rows):
-        voice_url = f"/chat/voice/{r['audio_file_path']}" if r["message_type"] == "voice" and r["audio_file_path"] else None
+        voice_url = (
+            f"/chat/voice/{r['audio_file_path']}"
+            if r["message_type"] == "voice" and r["audio_file_path"]
+            else None
+        )
         out.append(
             {
                 "id": r["id"],
@@ -258,7 +262,11 @@ async def send_room_voice(
         room_id,
     )
     return OkResponse(
-        detail={"points": str(spent["points"]), "voice_url": f"/chat/voice/{fname}", "id": row["id"]}
+        detail={
+            "points": str(spent["points"]),
+            "voice_url": f"/chat/voice/{fname}",
+            "id": row["id"],
+        }
     )
 
 
@@ -279,9 +287,7 @@ async def list_room_members(room_id: int, user: dict = Depends(get_current_user)
         """,
         room_id,
     )
-    return [
-        RoomMemberOut(**dict(r), is_host=(r["user_id"] == room["host_user_id"])) for r in rows
-    ]
+    return [RoomMemberOut(**dict(r), is_host=(r["user_id"] == room["host_user_id"])) for r in rows]
 
 
 @router.post("/{room_id}/invite", response_model=OkResponse)
