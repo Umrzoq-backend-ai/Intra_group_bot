@@ -1132,7 +1132,7 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
               </button>
               <div className="flex flex-col">
                 <span className="text-xs font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
-                  Чат прямого эфира
+                  {t('chat_title') || 'ФИДБЭК & ЧАТ'}
                 </span>
                 <span className="text-[10px] text-[#859397] font-mono">INTRA GROUP</span>
               </div>

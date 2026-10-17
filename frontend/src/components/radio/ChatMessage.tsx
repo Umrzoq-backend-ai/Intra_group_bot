@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Check, CheckCheck, Clock, Play, Pause, AlertTriangle, Paperclip } from 'lucide-react';
+import { Check, CheckCheck, Clock, Play, Pause, AlertTriangle, Paperclip, User as UserIcon } from 'lucide-react';
 import { API_URL } from '../../lib/config';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { ChatMessage, User } from '../../types';
@@ -52,26 +52,54 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
   const senderId = message.telegram_id || (isMine ? currentUser?.telegram_id : null);
   const senderName = isMine ? 'Вы' : (message.display_name || message.username || t('guest'));
 
+  const isAdmin = !isAI && (
+    message.username?.toLowerCase().includes('admin') ||
+    message.display_name?.toLowerCase().includes('admin') ||
+    message.kind === 'studio'
+  );
+
   return (
-    <div className={`flex w-full ${isAI ? 'justify-center' : isMine ? 'justify-end' : 'justify-start'} my-1`}>
+    <div className={`flex w-full items-start ${isAI ? 'justify-center' : isMine ? 'justify-end' : 'justify-start'} my-1`}>
+      {/* Left Avatar for other users (Blue for listeners, Emerald for admins) */}
+      {!isMine && !isAI && (
+        <div
+          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5 shadow-md ${
+            isAdmin
+              ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.35)]'
+              : 'bg-gradient-to-br from-[#059af0] to-[#27d9f7] text-[#060a14] shadow-[0_0_8px_rgba(39,217,247,0.25)]'
+          }`}
+          title={senderName}
+        >
+          <UserIcon className="w-3.5 h-3.5" />
+        </div>
+      )}
+
       <div
         className={`relative transition-all duration-200 ${
           isAI
-            ? 'max-w-[92%] px-4 py-3 rounded-2xl bg-[rgba(139,92,246,0.12)] border border-[rgba(139,92,246,0.35)] shadow-[0_4px_20px_rgba(139,92,246,0.15)] backdrop-blur-md text-[#e9d5ff]'
+            ? 'max-w-[92%] px-3.5 py-2 rounded-2xl bg-[rgba(139,92,246,0.12)] border border-[rgba(139,92,246,0.35)] shadow-[0_4px_20px_rgba(139,92,246,0.15)] backdrop-blur-md text-[#e9d5ff]'
             : isMine
-            ? 'max-w-[82%] px-3.5 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-[#059af0]/25 via-[#27d9f7]/20 to-[#059af0]/30 border border-[rgba(39,217,247,0.35)] shadow-[0_4px_20px_rgba(0,0,0,0.4),0_0_15px_rgba(39,217,247,0.12)] backdrop-blur-md text-[#dfe2f1]'
-            : 'max-w-[82%] px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-[rgba(15,19,30,0.75)] border border-[rgba(39,217,247,0.18)] shadow-[0_4px_20px_rgba(0,0,0,0.35)] backdrop-blur-md text-[#dfe2f1]'
+            ? 'max-w-[85%] px-3.5 py-2 rounded-2xl rounded-tr-sm bg-gradient-to-br from-[#059af0]/25 via-[#27d9f7]/20 to-[#059af0]/30 border border-[rgba(39,217,247,0.35)] shadow-[0_4px_20px_rgba(0,0,0,0.4),0_0_15px_rgba(39,217,247,0.12)] backdrop-blur-md text-[#dfe2f1]'
+            : 'max-w-[85%] px-3.5 py-2 rounded-2xl rounded-tl-sm bg-[rgba(15,19,30,0.85)] border border-[rgba(39,217,247,0.2)] shadow-[0_4px_20px_rgba(0,0,0,0.35)] backdrop-blur-md text-[#dfe2f1]'
         }`}
       >
-        {/* Header with Sender Name + Prominent User ID Badge */}
+        {/* Header with Sender Name, Time + User ID Badge matching mockup */}
         {!isAI && (
-          <div className="flex items-center gap-1.5 mb-1 text-[11px] select-none">
-            <span className={`font-bold ${isMine ? 'text-[#27d9f7]' : 'text-[#c2f3ff]'}`}>
+          <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 mb-1 text-[11px] select-none">
+            <span className={`font-bold ${isMine ? 'text-[#27d9f7]' : isAdmin ? 'text-emerald-400' : 'text-[#c2f3ff]'}`}>
               {senderName}
             </span>
+            <span className="text-[#859397] font-mono text-[10px] font-normal">
+              , {time}
+            </span>
             {senderId && (
-              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[rgba(39,217,247,0.12)] text-[#27d9f7] border border-[rgba(39,217,247,0.25)]">
+              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[rgba(39,217,247,0.12)] text-[#27d9f7] border border-[rgba(39,217,247,0.25)] ml-0.5">
                 ID: {senderId}
+              </span>
+            )}
+            {isAdmin && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                ADMIN
               </span>
             )}
             {message.kind === 'studio' && (
@@ -79,17 +107,16 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
                 В ЭФИР
               </span>
             )}
+            {isMine && message.status && (
+              <span className="ml-auto inline-flex items-center pl-1">
+                <StatusTicks status={message.status} />
+              </span>
+            )}
           </div>
         )}
 
         {/* Message body */}
         {renderContent()}
-
-        {/* Footer timestamp & delivery status */}
-        <div className={`flex items-center justify-end gap-1 text-[10px] font-mono mt-1 ${isMine ? 'text-[#27d9f7]/80' : 'text-[#859397]'}`}>
-          <span>{time}</span>
-          {isMine && message.status && <StatusTicks status={message.status} />}
-        </div>
       </div>
     </div>
   );

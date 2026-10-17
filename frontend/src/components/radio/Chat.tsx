@@ -3,6 +3,7 @@ import { ChatMessage as ChatMessageComponent } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { RoomsButton } from './RoomsScreen';
 import { markMessagesAsRead } from '../../lib/chatUnread';
+import { useTranslation } from '../../hooks/useTranslation';
 import type { ChatMessage as ChatMessageType, User } from '../../types';
 
 interface ChatProps {
@@ -28,6 +29,7 @@ export function Chat({
   onExit,
   isLive,
 }: ChatProps) {
+  const { t } = useTranslation('radio');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export function Chat({
           )}
           <div className="flex flex-col">
             <span className="text-[13px] font-extrabold uppercase tracking-[1.5px] bg-gradient-to-r from-[#c2f3ff] via-[#27d9f7] to-[#059af0] bg-clip-text text-transparent font-['Sora']">
-              Живой Чат
+              {t('chat_title') || 'ФИДБЭК & ЧАТ'}
             </span>
             <span className="text-[10px] text-[#859397] font-mono tracking-wider">INTRA GROUP</span>
           </div>
