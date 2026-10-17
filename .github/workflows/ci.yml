@@ -36,8 +36,6 @@ jobs:
 
   test:
     name: Test (pytest)
-    env:
-      UPLOAD_DIR: ${{ runner.temp }}/intra-uploads
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -83,6 +81,8 @@ jobs:
             -f backend/app/db/schema.sql
 
       - name: Run tests
+        env:
+          UPLOAD_DIR: ${{ runner.temp }}/intra-uploads
         run: cd backend && python -m pytest tests/ -v --tb=short
 
   build:
