@@ -15,8 +15,8 @@ from app.core.database import db
 from app.core.dependencies import require_admin, require_role, require_staff
 from app.core.models import (
     AdminAddPointsRequest,
-    AdminSetStaffRoleRequest,
     AdminSetLevelRequest,
+    AdminSetStaffRoleRequest,
     ManualPaymentDecision,
     ManualPaymentOut,
     OkResponse,
@@ -29,9 +29,8 @@ from app.core.models import (
     PricingUpdate,
 )
 from app.core.ws_manager import manager
-from app.services import notifications
+from app.services import notifications, pricing
 from app.services import points as points_service
-from app.services import pricing
 
 log = logging.getLogger("admin")
 
@@ -181,6 +180,7 @@ async def delete_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     from app.core.config import settings
+
     # Superadmin (ADMIN_IDS) foydalanuvchisini hech kim o'chira olmaydi
     if target["telegram_id"] in settings.admin_ids_set:
         raise HTTPException(status_code=403, detail="Cannot delete superadmin")
@@ -193,8 +193,12 @@ async def delete_user(
         async with conn.transaction():
             # Cascade qo'yilmagan jadvallarni tozalab ketamiz
             await conn.execute("UPDATE topics SET created_by = NULL WHERE created_by = $1", user_id)
-            await conn.execute("UPDATE broadcast_slots SET created_by = NULL WHERE created_by = $1", user_id)
-            await conn.execute("UPDATE broadcast_slots SET host_user_id = NULL WHERE host_user_id = $1", user_id)
+            await conn.execute(
+                "UPDATE broadcast_slots SET created_by = NULL WHERE created_by = $1", user_id
+            )
+            await conn.execute(
+                "UPDATE broadcast_slots SET host_user_id = NULL WHERE host_user_id = $1", user_id
+            )
             await conn.execute("DELETE FROM opinions WHERE user_id = $1", user_id)
             result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
             if result.endswith("0"):
@@ -246,9 +250,7 @@ async def update_payment_settings(
       both   — ikkalasi ham (foydalanuvchi tanlaydi)
     """
     if payload.method not in ("stars", "manual", "both"):
-        raise HTTPException(
-            status_code=400, detail="method must be 'stars', 'manual' or 'both'"
-        )
+        raise HTTPException(status_code=400, detail="method must be 'stars', 'manual' or 'both'")
 
     settings_map = {
         "payment_method": payload.method,
@@ -352,9 +354,7 @@ async def approve_manual_payment(
         admin["id"],
     )
     if pay is None:
-        raise HTTPException(
-            status_code=404, detail="Заявка не найдена или уже обработана"
-        )
+        raise HTTPException(status_code=404, detail="Заявка не найдена или уже обработана")
 
     # Point qo'shamiz
     result = await points_service.add_points(
@@ -428,9 +428,7 @@ async def reject_manual_payment(
         admin["id"],
     )
     if pay is None:
-        raise HTTPException(
-            status_code=404, detail="Заявка не найдена или уже обработана"
-        )
+        raise HTTPException(status_code=404, detail="Заявка не найдена или уже обработана")
 
     log.info(
         "Admin %d manual payment #%d rad etdi: user=%d (sabab: %s)",
@@ -458,9 +456,7 @@ async def reject_manual_payment(
 @router.get("/manual-payments/pending-count")
 async def manual_payments_pending_count(admin: dict = Depends(require_admin)):
     """[FAQAT admin] Kutilayotgan arizalar soni — admin panel badge uchun."""
-    count = await db.fetchval(
-        "SELECT COUNT(*) FROM manual_payments WHERE status = 'pending'"
-    )
+    count = await db.fetchval("SELECT COUNT(*) FROM manual_payments WHERE status = 'pending'")
     return {"count": count or 0}
 
 
@@ -793,7 +789,11 @@ async def get_default_music(admin: dict = Depends(require_role("doverenniy"))):
 
     name_row = await db.fetchrow("SELECT value FROM app_settings WHERE key = 'default_music_name'")
     path_row = await db.fetchrow("SELECT value FROM app_settings WHERE key = 'default_music_path'")
-    url = f"/uploads/{os.path.basename(path_row['value'])}" if path_row and path_row["value"] else None
+    url = (
+        f"/uploads/{os.path.basename(path_row['value'])}"
+        if path_row and path_row["value"]
+        else None
+    )
     return {"name": name_row["value"] if name_row and name_row["value"] else None, "url": url}
 
 
@@ -843,7 +843,9 @@ async def upload_default_music(
         display_name,
     )
     log.info("User %d default music o'rnatdi: %s", admin["id"], display_name)
-    return OkResponse(detail={"name": display_name, "url": f"/uploads/{os.path.basename(raw_path)}"})
+    return OkResponse(
+        detail={"name": display_name, "url": f"/uploads/{os.path.basename(raw_path)}"}
+    )
 
 
 @router.delete("/music/default", response_model=OkResponse)

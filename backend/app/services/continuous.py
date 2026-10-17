@@ -281,13 +281,25 @@ def _spawn_ffmpeg(lang: str) -> subprocess.Popen:
     if USE_ICECAST:
         # Kirish allaqachon mp3 — qayta kodlashsiz to'g'ridan-to'g'ri Icecast'ga
         encode_args = [
-            "-c:a", "copy", "-content_type", "audio/mpeg", "-f", "mp3",
+            "-c:a",
+            "copy",
+            "-content_type",
+            "audio/mpeg",
+            "-f",
+            "mp3",
         ]
     else:
         encode_args = [
-            "-c:a", "aac", "-b:a", BITRATE,
-            "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS),
-            "-f", "flv",
+            "-c:a",
+            "aac",
+            "-b:a",
+            BITRATE,
+            "-ar",
+            str(SAMPLE_RATE),
+            "-ac",
+            str(CHANNELS),
+            "-f",
+            "flv",
         ]
     cmd = [
         _ffmpeg_bin(),

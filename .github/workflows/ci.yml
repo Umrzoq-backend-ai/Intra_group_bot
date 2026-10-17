@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.17.1
       - name: Run ruff check
         run: cd backend && ruff check app/ tests/
       - name: Run ruff format check
@@ -73,7 +73,7 @@ jobs:
           pip install poetry
           poetry config virtualenvs.create false
           poetry install --without dev
-          pip install pytest pytest-asyncio httpx ruff
+          pip install pytest pytest-asyncio httpx ruff==0.17.1
 
       - name: Apply schema
         run: |
@@ -81,6 +81,8 @@ jobs:
             -f backend/app/db/schema.sql
 
       - name: Run tests
+        env:
+          UPLOAD_DIR: ${{ runner.temp }}/intra-uploads
         run: cd backend && python -m pytest tests/ -v --tb=short
 
   build:
@@ -90,6 +92,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t intra-group-backend:ci ./backend
+        run: docker build -f backend/Dockerfile -t intra-group-backend:ci .
       - name: Verify image
         run: docker run --rm intra-group-backend:ci python -c "from app.core.config import Settings; print('OK')"

@@ -27,9 +27,7 @@ async def send_dm(telegram_id: int, text: str) -> bool:
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url, json={"chat_id": telegram_id, "text": text}, timeout=10
-            )
+            resp = await client.post(url, json={"chat_id": telegram_id, "text": text}, timeout=10)
         ok = bool(resp.json().get("ok"))
         if not ok:
             log.info("[notifications] DM yuborilmadi (%s): %s", telegram_id, resp.text[:200])
@@ -62,9 +60,7 @@ async def get_bot_username() -> str:
         return ""
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10
-            )
+            resp = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10)
         data = resp.json()
         if data.get("ok"):
             _bot_username_cache = data["result"].get("username", "") or ""

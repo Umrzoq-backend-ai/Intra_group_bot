@@ -32,7 +32,9 @@ async def _transcribe_opinion_voice(opinion_id: int, fpath: str):
 
         text = await whisper_stt.transcribe(fpath)
         if text and text.strip():
-            await db.execute("UPDATE opinions SET text = $1 WHERE id = $2", text.strip(), opinion_id)
+            await db.execute(
+                "UPDATE opinions SET text = $1 WHERE id = $2", text.strip(), opinion_id
+            )
             log.info("[opinions] Voice #%d transcribed: %s", opinion_id, text[:60])
     except Exception as exc:  # noqa: BLE001
         log.warning("[opinions] STT failed for voice #%d: %s", opinion_id, exc)

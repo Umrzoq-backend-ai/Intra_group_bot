@@ -19,7 +19,6 @@ from app.core.constants import LEVELS
 from app.core.database import db
 from app.core.dependencies import get_current_user
 from app.core.internal_auth import require_internal_key
-from app.core.ws_manager import manager
 from app.core.models import (
     ManualPaymentCreate,
     ManualPaymentOut,
@@ -36,6 +35,7 @@ from app.core.models import (
     UpdateProfileRequest,
     UserProfileOut,
 )
+from app.core.ws_manager import manager
 from app.services import notifications
 from app.services import points as points_service
 
@@ -378,7 +378,9 @@ async def get_my_manual_payments(user: dict = Depends(get_current_user)):
     return [
         ManualPaymentOut(
             **{k: v for k, v in dict(r).items() if k != "receipt_path"},
-            receipt_url=f"/uploads/{r['receipt_path'].split('/')[-1]}" if r["receipt_path"] else None,
+            receipt_url=f"/uploads/{r['receipt_path'].split('/')[-1]}"
+            if r["receipt_path"]
+            else None,
         )
         for r in rows
     ]
@@ -396,9 +398,7 @@ async def cancel_manual_payment(
         user["id"],
     )
     if result.endswith("0"):
-        raise HTTPException(
-            status_code=404, detail="Заявка не найдена или уже обработана"
-        )
+        raise HTTPException(status_code=404, detail="Заявка не найдена или уже обработана")
     return OkResponse(detail={"cancelled_id": payment_id})
 
 
@@ -478,24 +478,43 @@ async def credit_purchase(payload: CreditPurchaseRequest):
 @router.get("/stats")
 async def get_user_stats(user: dict = Depends(get_current_user)):
     """Foydalanuvchi faollik statistikasi (Stats ekranida ko'rsatiladi)."""
-    chat_total = await db.fetchval(
-        "SELECT COUNT(*) FROM chat_messages WHERE user_id = $1", user["id"]
-    ) or 0
-    chat_voice = await db.fetchval(
-        "SELECT COUNT(*) FROM chat_messages WHERE user_id = $1 AND message_type = 'voice'", user["id"]
-    ) or 0
-    studio_total = await db.fetchval(
-        "SELECT COUNT(*) FROM messages WHERE user_id = $1 AND is_for_studio = true", user["id"]
-    ) or 0
-    points_spent = await db.fetchval(
-        "SELECT COALESCE(ABS(SUM(amount)), 0) FROM points_transactions WHERE user_id = $1 AND amount < 0", user["id"]
-    ) or 0
-    points_earned = await db.fetchval(
-        "SELECT COALESCE(SUM(amount), 0) FROM points_transactions WHERE user_id = $1 AND amount > 0", user["id"]
-    ) or 0
-    days_active = await db.fetchval(
-        "SELECT COUNT(DISTINCT DATE(created_at)) FROM chat_messages WHERE user_id = $1", user["id"]
-    ) or 0
+    chat_total = (
+        await db.fetchval("SELECT COUNT(*) FROM chat_messages WHERE user_id = $1", user["id"]) or 0
+    )
+    chat_voice = (
+        await db.fetchval(
+            "SELECT COUNT(*) FROM chat_messages WHERE user_id = $1 AND message_type = 'voice'",
+            user["id"],
+        )
+        or 0
+    )
+    studio_total = (
+        await db.fetchval(
+            "SELECT COUNT(*) FROM messages WHERE user_id = $1 AND is_for_studio = true", user["id"]
+        )
+        or 0
+    )
+    points_spent = (
+        await db.fetchval(
+            "SELECT COALESCE(ABS(SUM(amount)), 0) FROM points_transactions WHERE user_id = $1 AND amount < 0",
+            user["id"],
+        )
+        or 0
+    )
+    points_earned = (
+        await db.fetchval(
+            "SELECT COALESCE(SUM(amount), 0) FROM points_transactions WHERE user_id = $1 AND amount > 0",
+            user["id"],
+        )
+        or 0
+    )
+    days_active = (
+        await db.fetchval(
+            "SELECT COUNT(DISTINCT DATE(created_at)) FROM chat_messages WHERE user_id = $1",
+            user["id"],
+        )
+        or 0
+    )
 
     return {
         "total_messages": chat_total,

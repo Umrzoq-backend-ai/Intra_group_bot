@@ -51,12 +51,15 @@ _broadcast_expiry: dict[str, datetime] = {}  # city -> slot tugash vaqti (UTC)
 _broadcast_slot_id: dict[str, int] = {}  # city -> slot id
 _watchdog_task: asyncio.Task | None = None
 
+
 # Har bir jonli efir sessiyasi uchun bir martalik ulashiladigan link
 # (EfirScreen dashboard'idagi "Копировать ссылку") — /start orqali bot
 # shu tokenni "live_{token}" deb tanib, hozir kim efirda ekanini ko'rsatadi.
 # BOT_USERNAME endi env/settings'dan olinadi — hardcode emas.
 def _get_bot_username() -> str:
     return settings.bot_username or "unknown_bot"
+
+
 _live_token_by_city: dict[str, str] = {}
 _live_city_by_token: dict[str, str] = {}
 
@@ -216,9 +219,9 @@ async def hls_proxy(path: str, request: Request):
             stream=True,
             follow_redirects=True,
         )
-    except httpx.RequestError:
+    except httpx.RequestError as exc:
         await client.aclose()
-        raise HTTPException(status_code=502, detail="MediaMTX unreachable")
+        raise HTTPException(status_code=502, detail="MediaMTX unreachable") from exc
 
     if upstream.status_code != 200:
         await upstream.aclose()
@@ -283,7 +286,12 @@ async def icecast_proxy(lang: str, request: Request):
                             continue
                         async for chunk in resp.aiter_bytes(4096):
                             yield chunk
-            except (httpx.ConnectError, httpx.ReadError, httpx.ReadTimeout, httpx.RemoteProtocolError):
+            except (
+                httpx.ConnectError,
+                httpx.ReadError,
+                httpx.ReadTimeout,
+                httpx.RemoteProtocolError,
+            ):
                 await asyncio.sleep(0.5)
                 continue
             except Exception:  # noqa: BLE001
@@ -714,9 +722,7 @@ async def broadcast_http_start(city: str, user: dict = Depends(get_current_user)
 
 
 @router.post("/{city}/broadcast/chunk")
-async def broadcast_http_chunk(
-    city: str, request: Request, user: dict = Depends(get_current_user)
-):
+async def broadcast_http_chunk(city: str, request: Request, user: dict = Depends(get_current_user)):
     """[doverenniy+] Navbatdagi audio chunk'ni yuboradi (HTTP chunk fallback)."""
     if _http_broadcast_owner.get(city) != user["id"]:
         raise HTTPException(status_code=403, detail="No active broadcast session for this user")
