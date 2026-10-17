@@ -23,6 +23,8 @@
   "chat_placeholder": "Your message...",
   "send_btn": "SEND",
   "voice_btn": "VOICE",
+  "you": "You",
+  "guest": "Guest",
   "send_to_chat": "Send to chat",
   "send_to_studio": "Send to studio",
   "voice_message": "Voice message",

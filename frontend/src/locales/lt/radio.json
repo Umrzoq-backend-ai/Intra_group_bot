@@ -23,6 +23,8 @@
   "chat_placeholder": "Jūsų žinutė...",
   "send_btn": "SIŲSTI",
   "voice_btn": "BALSO",
+  "you": "Jūs",
+  "guest": "Svečias",
   "send_to_chat": "Siųsti į pokalbį",
   "send_to_studio": "Siųsti į studiją",
   "voice_message": "Balso žinutė",

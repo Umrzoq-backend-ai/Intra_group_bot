@@ -1174,9 +1174,8 @@ export function EfirScreen({ user, onPointsUpdate, onNavigate, isLive, liveRemai
             )}
           </div>
 
-          {/* Input — asosiy "Живой чат" bilan bir xil komponent (Telegram
-              uslubidagi doira tugma, darhol ko'rinish, galochka statusi). */}
-          <div className="px-4 pb-6 pt-3 border-t" style={{ borderColor: 'rgba(200,255,203,0.12)' }}>
+          {/* Input — Dark Obsidian Glass capsule */}
+          <div className="px-3 pb-safe pb-3.5 pt-1.5 border-t border-[rgba(39,217,247,0.14)] bg-[#060a14]/90 backdrop-blur-md">
             <ChatInput
               onSendMessage={(msg) => handleSendMessage(msg, 'chat')}
               onSendVoice={handleSendVoiceToChat}

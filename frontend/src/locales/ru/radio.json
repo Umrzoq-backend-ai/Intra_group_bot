@@ -23,6 +23,8 @@
   "chat_placeholder": "Ваше сообщение...",
   "send_btn": "ОТПРАВИТЬ",
   "voice_btn": "ГОЛОСОВЫЕ",
+  "you": "Вы",
+  "guest": "Гость",
   "send_to_chat": "Отправить в чат",
   "send_to_studio": "Отправить в студию",
   "voice_message": "Голосовое сообщение",

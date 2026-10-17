@@ -50,7 +50,7 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
   };
 
   const senderId = message.telegram_id || (isMine ? currentUser?.telegram_id : null);
-  const senderName = isMine ? 'Вы' : (message.display_name || message.username || t('guest'));
+  const senderName = isMine ? (t('you') || 'Вы') : (message.display_name || message.username || (t('guest') || 'Гость'));
 
   const isAdmin = !isAI && (
     message.username?.toLowerCase().includes('admin') ||
